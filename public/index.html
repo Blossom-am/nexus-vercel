@@ -116,7 +116,7 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '—';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
-      var NEXUS_VERSION = "20";
+      var NEXUS_VERSION = "21";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -460,8 +460,28 @@
       }).catch(function() { _isSyncing = false; return false; });
     }
 
-    // No periodic sync — pull only on page load, push on every change
-    function startPeriodicSync() {} // Disabled
+    // Gentle periodic sync — pull every 20s, update localStorage silently, show notification
+    function startPeriodicSync() {
+      setInterval(function() {
+        pullData().then(function(data) {
+          if (data && data.timestamp && data.timestamp > _lastSyncTime) {
+            _applyData(data);
+            _lastSyncTime = data.timestamp;
+            // Show a small clickable notification instead of reloading
+            var notif = document.getElementById("nexus-update-notif");
+            if (!notif) {
+              notif = document.createElement("div");
+              notif.id = "nexus-update-notif";
+              notif.style.cssText = "position:fixed;top:12px;right:12px;padding:10px 16px;background:#3b82f6;color:white;border-radius:8px;font-size:13px;cursor:pointer;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15)";
+              notif.onclick = function() { location.reload(); };
+              document.body.appendChild(notif);
+            }
+            notif.textContent = "Nouvelles données — cliquez pour actualiser";
+            notif.style.display = "block";
+          }
+        });
+      }, 20000);
+    }
 
     function syncBuiltins() {}
     function publishToFile() { return pushData(); }
