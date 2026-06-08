@@ -116,7 +116,7 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '—';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
-      var NEXUS_VERSION = "17";
+      var NEXUS_VERSION = "18";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -4100,23 +4100,23 @@
     };
 
     // Initial sync on load + start periodic sync
+    // Pull data BEFORE rendering React, then render
     initialSync().then(function(ok) {
       if (ok) console.log("Sync OK");
-      startPeriodicSync();
+    }).finally(function() {
+      // Initialize and Render AFTER sync is complete
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(
+        h(ErrorBoundary, {},
+          h(App)
+        )
+      );
+      // Hide loading screen
+      setTimeout(function() {
+        var ls = document.getElementById("loading-screen");
+        if (ls) ls.style.display = "none";
+      }, 500);
     });
-
-    // Initialize and Render
-    const root = ReactDOM.createRoot(document.getElementById("root"));
-    root.render(
-      h(ErrorBoundary, {},
-        h(App)
-      )
-    );
-    // Hide loading screen
-    setTimeout(function() {
-      var ls = document.getElementById("loading-screen");
-      if (ls) ls.style.display = "none";
-    }, 500);
 
     } catch (err) {
       console.error("Fatal error during app initialization:", err);
