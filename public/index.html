@@ -116,7 +116,7 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '—';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
-      var NEXUS_VERSION = "18";
+      var NEXUS_VERSION = "19";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -379,24 +379,19 @@
     var _isSyncing = false;
     var _syncQueue = null;
 
+    // Read current state from localStorage (source of truth for push)
     function _getAllData() {
       var d = {};
       try { d.users = getUsers(); } catch(e) { d.users = []; }
       try { d.agentImm = getAgentImmData(); } catch(e) { d.agentImm = {}; }
       try { d.agentTypes = getAgentTypes(); } catch(e) { d.agentTypes = {}; }
       try { var r = localStorage.getItem("nexus_lot_commercialisation"); d.commData = r ? JSON.parse(r) : {}; } catch(e) { d.commData = {}; }
-      try {
-        var localV = []; try { var rv = localStorage.getItem("nexus_denonce_visites"); if (rv) localV = JSON.parse(rv); } catch(e2) {}
-        var builtinV = (typeof BUILTIN_VISITES !== "undefined") ? BUILTIN_VISITES : [];
-        var mergedV = localV.slice();
-        var vids = {}; mergedV.forEach(function(v) { if (v.id) vids[v.id] = true; });
-        builtinV.forEach(function(v) { if (v.id && !vids[v.id]) mergedV.push(v); });
-        d.visites = mergedV;
-      } catch(e) { d.visites = []; }
+      try { var rv = localStorage.getItem("nexus_denonce_visites"); d.visites = rv ? JSON.parse(rv) : []; } catch(e) { d.visites = []; }
       d.timestamp = Date.now();
       return d;
     }
 
+    // Apply remote data — REPLACE local data (database is source of truth)
     function _applyData(d) {
       if (!d) return;
       if (d.users && d.users.length > 0) {
@@ -411,19 +406,13 @@
         BUILTIN_AGENT_TYPES = d.agentTypes;
         try { localStorage.setItem("nexus_agent_types", JSON.stringify(d.agentTypes)); } catch(e) {}
       }
-      if (d.commData && Object.keys(d.commData).length > 0) {
+      if (d.commData) {
         BUILTIN_COMM_DATA = d.commData;
         try { localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(d.commData)); } catch(e) {}
       }
       if (d.visites) {
-        var localVisites = [];
-        try { var raw = localStorage.getItem("nexus_denonce_visites"); if (raw) localVisites = JSON.parse(raw); } catch(e) {}
-        var merged = localVisites.slice();
-        var ids = {};
-        merged.forEach(function(v) { if (v.id) ids[v.id] = true; });
-        d.visites.forEach(function(v) { if (v.id && !ids[v.id]) merged.push(v); });
-        BUILTIN_VISITES = merged;
-        try { localStorage.setItem("nexus_denonce_visites", JSON.stringify(merged)); } catch(e) {}
+        BUILTIN_VISITES = d.visites;
+        try { localStorage.setItem("nexus_denonce_visites", JSON.stringify(d.visites)); } catch(e) {}
       }
     }
 
@@ -2703,15 +2692,10 @@
     // ─── Dénonce visites helpers (localStorage) ───
     var DENONCE_LS_KEY = "nexus_denonce_visites";
     function getAllDenonceVisites() {
+      // Read directly from localStorage (database is source of truth)
       var locals = [];
       try { var raw = localStorage.getItem(DENONCE_LS_KEY); if (raw) locals = JSON.parse(raw); } catch(e) {}
-      // Merge BUILTIN visites with localStorage (avoid duplicates by id)
-      var merged = locals.slice();
-      if (typeof BUILTIN_VISITES !== "undefined" && BUILTIN_VISITES.length > 0) {
-        var ids = {};
-        merged.forEach(function(v) { if (v.id) ids[v.id] = true; });
-        BUILTIN_VISITES.forEach(function(v) { if (v.id && !ids[v.id]) merged.push(v); });
-      }
+      var merged = locals;
       return merged;
     }
     function saveDenonceVisites(arr) {
