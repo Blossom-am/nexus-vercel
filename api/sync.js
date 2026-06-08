@@ -1,9 +1,14 @@
 import { Redis } from '@upstash/redis';
 
-const kv = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+let kv;
+try {
+  kv = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+} catch (initErr) {
+  kv = null;
+}
 
 const DATA_KEY = 'nexus_data';
 const AUTH_KEY = 'nexus2026';
@@ -15,12 +20,20 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  if (!kv) {
+    return res.status(500).json({
+      error: 'Redis not initialized',
+      hasUrl: !!process.env.UPSTASH_REDIS_REST_URL,
+      hasToken: !!process.env.UPSTASH_REDIS_REST_TOKEN
+    });
+  }
+
   if (req.method === 'GET') {
     try {
       const data = await kv.get(DATA_KEY);
       return res.status(200).json(data || { users: [], agentImm: {}, agentTypes: {}, commData: {}, visites: [], timestamp: 0 });
     } catch (e) {
-      return res.status(500).json({ error: 'Read failed' });
+      return res.status(500).json({ error: 'Read failed', detail: e.message });
     }
   }
 
@@ -32,7 +45,7 @@ export default async function handler(req, res) {
       await kv.set(DATA_KEY, data);
       return res.status(200).json({ ok: true, timestamp: data.timestamp });
     } catch (e) {
-      return res.status(500).json({ error: 'Write failed' });
+      return res.status(500).json({ error: 'Write failed', detail: e.message });
     }
   }
 
