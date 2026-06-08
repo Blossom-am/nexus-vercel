@@ -116,7 +116,7 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '—';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
-      var NEXUS_VERSION = "19";
+      var NEXUS_VERSION = "20";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -482,32 +482,15 @@
     var exportUpdatedFile = publishToFile;
 
     function getUsers() {
-      var locals = [];
-      try { var raw = localStorage.getItem("nexus_users"); if (raw) locals = JSON.parse(raw); } catch(e) {}
-      // Merge: builtin users are always present; localStorage can override but never erase critical fields
-      var merged = BUILTIN_USERS.map(function(bu) {
-        var local = locals.find(function(u) { return u.username.toUpperCase() === bu.username.toUpperCase(); });
-        if (!local) return Object.assign({}, bu);
-        // BUILTIN always wins for critical fields (password, role, agentName)
-        var result = Object.assign({}, local);
-        result.username = bu.username;
-        result.password = bu.password;
-        result.role = bu.role;
-        if (bu.agentName) result.agentName = bu.agentName;
-        if (bu.fullName) result.fullName = bu.fullName;
-        return result;
-      });
-      // Add any localStorage-only users (created locally)
-      locals.forEach(function(lu) {
-        if (!merged.find(function(u) { return u.username === lu.username; })) {
-          merged.push(lu);
-        }
-      });
-      return merged;
+      // Read from localStorage (populated by initialSync from database)
+      try { var raw = localStorage.getItem("nexus_users"); if (raw) return JSON.parse(raw); } catch(e) {}
+      // Fallback to BUILTIN (first ever load, before any sync)
+      return BUILTIN_USERS.slice();
     }
 
-    function saveUsers(users) { autoSave();
+    function saveUsers(users) {
       localStorage.setItem("nexus_users", JSON.stringify(users));
+      pushData();
     }
 
     // ─── Shared UI helpers ───
@@ -2196,15 +2179,12 @@
     /* __BUILTIN_AGENT_IMM_END__ */
 
     function getAgentImmData() {
-      var locals = {};
-      try { var raw = localStorage.getItem(AGENT_IMM_LS_KEY); if (raw) locals = JSON.parse(raw); } catch(e) {}
-      var merged = Object.assign({}, BUILTIN_AGENT_IMM);
-      Object.keys(locals).forEach(function(k) { merged[k] = locals[k]; });
-      return merged;
+      try { var raw = localStorage.getItem(AGENT_IMM_LS_KEY); if (raw) return JSON.parse(raw); } catch(e) {}
+      return Object.assign({}, BUILTIN_AGENT_IMM);
     }
     function saveAgentImmData(data) {
       try { localStorage.setItem(AGENT_IMM_LS_KEY, JSON.stringify(data)); } catch(e) {}
-      autoSave();
+      pushData();
     }
 
     var AGENT_TYPE_LS_KEY = "nexus_agent_types";
@@ -2222,15 +2202,12 @@
     /* __BUILTIN_AGENT_TYPES_END__ */
 
     function getAgentTypes() {
-      var locals = {};
-      try { var raw = localStorage.getItem(AGENT_TYPE_LS_KEY); if (raw) locals = JSON.parse(raw); } catch(e) {}
-      var merged = Object.assign({}, BUILTIN_AGENT_TYPES);
-      Object.keys(locals).forEach(function(k) { merged[k] = locals[k]; });
-      return merged;
+      try { var raw = localStorage.getItem(AGENT_TYPE_LS_KEY); if (raw) return JSON.parse(raw); } catch(e) {}
+      return Object.assign({}, BUILTIN_AGENT_TYPES);
     }
     function saveAgentTypes(data) {
       try { localStorage.setItem(AGENT_TYPE_LS_KEY, JSON.stringify(data)); } catch(e) {}
-      autoSave();
+      pushData();
     }
     function getAgentType(agentName) {
       var types = getAgentTypes();
@@ -2700,7 +2677,8 @@
     }
     function saveDenonceVisites(arr) {
       try { localStorage.setItem(DENONCE_LS_KEY, JSON.stringify(arr)); } catch(e) {}
-      autoSave();
+      // Push immediately (no debounce) to ensure deletions are synced before any refresh
+      pushData();
     }
 
     // ─── Dénonce Visites Page ───
