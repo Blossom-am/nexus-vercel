@@ -380,21 +380,27 @@
     }
 
     function pushData() {
-      // Pull-merge-push: first fetch server state, merge visits, then push
+      // Pull-merge-push: fetch server state, smart-merge visits, then push
       return pullData().then(function(serverData) {
         var data = _getAllData();
-        // Merge visits by ID: keep local visits + add server visits not present locally and not deleted
-        if (serverData && serverData.visites && serverData.visites.length > 0) {
-          var localIds = {};
-          data.visites.forEach(function(v) { localIds[v.id] = true; });
+        // Smart merge: SERVER is source of truth for existing visits.
+        // Only add LOCAL visits that were created after last sync (truly new, not yet on server).
+        // This prevents resurrecting visits deleted by other users.
+        if (serverData && serverData.visites) {
+          var serverIds = {};
+          serverData.visites.forEach(function(v) { serverIds[v.id] = true; });
           var deletedIds = {};
           try { JSON.parse(localStorage.getItem("nexus_deleted_visits") || "[]").forEach(function(id) { deletedIds[id] = true; }); } catch(e) {}
-          serverData.visites.forEach(function(v) {
-            if (!localIds[v.id] && !deletedIds[v.id]) {
-              data.visites.push(v);
+          // Start with server visits (minus local deletions)
+          var merged = serverData.visites.filter(function(v) { return !deletedIds[v.id]; });
+          // Add locally-created visits not yet on server (id > _lastSyncTime means created after last sync)
+          data.visites.forEach(function(v) {
+            if (!serverIds[v.id] && !deletedIds[v.id] && v.id > _lastSyncTime) {
+              merged.push(v);
             }
           });
-          // Also update localStorage so next render picks up merged visits
+          data.visites = merged;
+          // Update localStorage so next render picks up merged visits
           try { localStorage.setItem("nexus_denonce_visites", JSON.stringify(data.visites)); } catch(e) {}
         }
         return fetch(API_URL, {
@@ -411,17 +417,16 @@
             indicator.style.cssText = "position:fixed;bottom:8px;left:8px;padding:4px 12px;border-radius:20px;font-size:11px;z-index:9999;transition:opacity 0.5s";
             document.body.appendChild(indicator);
           }
-          indicator.textContent = ok ? "Synchronisé" : "Erreur sync";
+          indicator.textContent = ok ? "SynchronisÃ©" : "Erreur sync";
           indicator.style.background = ok ? "#22c55e" : "#ef4444";
           indicator.style.color = "white";
           indicator.style.opacity = "1";
-
-              icator.style.opacity = "0"; }, 3000);
+          setTimeout(function() { indicator.style.opacity = "0"; }, 3000);
           // Use SERVER timestamp so periodic pull won't flag our own push as "new"
           if (ok) {
             // Clear deleted visits tracking ONLY after successful push
-              try { localStorage.removeItem("nexus_deleted_visits"); } catch(e) {}
-              return r.json().then(function(resp) {
+            try { localStorage.removeItem("nexus_deleted_visits"); } catch(e) {}
+            return r.json().then(function(resp) {
               _lastSyncTime = resp.timestamp || data.timestamp;
               return true;
             });
