@@ -417,7 +417,7 @@
             indicator.style.cssText = "position:fixed;bottom:8px;left:8px;padding:4px 12px;border-radius:20px;font-size:11px;z-index:9999;transition:opacity 0.5s";
             document.body.appendChild(indicator);
           }
-          indicator.textContent = ok ? "SynchronisÃ©" : "Erreur sync";
+          indicator.textContent = ok ? "Synchronis\u00e9" : "Erreur sync";
           indicator.style.background = ok ? "#22c55e" : "#ef4444";
           indicator.style.color = "white";
           indicator.style.opacity = "1";
@@ -475,7 +475,7 @@
                 notif.onclick = function() { notif.style.display = "none"; location.reload(); };
                 document.body.appendChild(notif);
               }
-              notif.textContent = "Nouvelles donnÃ©es â cliquez pour actualiser";
+              notif.textContent = "Nouvelles donn\u00e9es \u2014 cliquez pour actualiser";
               notif.style.display = "block";
             }
           }
