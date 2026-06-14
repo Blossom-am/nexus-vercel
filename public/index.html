@@ -397,8 +397,6 @@
           // Also update localStorage so next render picks up merged visits
           try { localStorage.setItem("nexus_denonce_visites", JSON.stringify(data.visites)); } catch(e) {}
         }
-        // Clear deleted visits tracking after merge (they've been excluded)
-        try { localStorage.removeItem("nexus_deleted_visits"); } catch(e) {}
         return fetch(API_URL, {
           method: "POST",
           headers: { "Authorization": "Bearer " + API_AUTH, "Content-Type": "application/json" },
@@ -417,10 +415,13 @@
           indicator.style.background = ok ? "#22c55e" : "#ef4444";
           indicator.style.color = "white";
           indicator.style.opacity = "1";
-          setTimeout(function() { indicator.style.opacity = "0"; }, 3000);
+
+              icator.style.opacity = "0"; }, 3000);
           // Use SERVER timestamp so periodic pull won't flag our own push as "new"
           if (ok) {
-            return r.json().then(function(resp) {
+            // Clear deleted visits tracking ONLY after successful push
+              try { localStorage.removeItem("nexus_deleted_visits"); } catch(e) {}
+              return r.json().then(function(resp) {
               _lastSyncTime = resp.timestamp || data.timestamp;
               return true;
             });
@@ -2713,6 +2714,25 @@
 
       // Persist
       useEffect(function() { saveDenonceVisites(entries); }, [entries]);
+
+      // On mount (admin): pull fresh visits from server to catch changes from other users/devices
+      useEffect(function() {
+        if (!isAgentUser) {
+          pullData().then(function(data) {
+            if (data && data.visites) {
+              var fresh = data.visites;
+              var currentRaw = localStorage.getItem("nexus_denonce_visites") || "[]";
+              var freshStr = JSON.stringify(fresh);
+              // Only update if data actually changed (avoids unnecessary push loops)
+              if (freshStr !== currentRaw) {
+                try { localStorage.setItem("nexus_denonce_visites", freshStr); } catch(e) {}
+                setEntries(fresh);
+              }
+              if (data.timestamp) _lastSyncTime = data.timestamp;
+            }
+          });
+        }
+      }, []);
 
       function addCustomAgent(name) {
         if (name && customAgents.indexOf(name) === -1 && allAgents.indexOf(name) === -1) {
