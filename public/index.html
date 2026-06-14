@@ -452,32 +452,32 @@
     // Gentle periodic sync — pull every 20s, update localStorage silently, show notification
     function startPeriodicSync() {
       setInterval(function() {
-        // Only show notification for admin, not agents
+        // Check if user is agent (for notification display only)
+        var isAgent = false;
         try {
           var session = sessionStorage.getItem("nexus_session");
           if (session) {
             var u = JSON.parse(session);
-            if (u.role === "agent") {
-              var n = document.getElementById("nexus-update-notif");
-              if (n) n.style.display = "none";
-              return;
-            }
+            if (u.role === "agent") isAgent = true;
           }
         } catch(e) {}
         pullData().then(function(data) {
           if (data && data.timestamp && data.timestamp > _lastSyncTime) {
             _applyData(data);
             _lastSyncTime = data.timestamp;
-            var notif = document.getElementById("nexus-update-notif");
-            if (!notif) {
-              notif = document.createElement("div");
-              notif.id = "nexus-update-notif";
-              notif.style.cssText = "position:fixed;top:12px;right:12px;padding:10px 16px;background:#3b82f6;color:white;border-radius:8px;font-size:13px;cursor:pointer;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15)";
-              notif.onclick = function() { notif.style.display = "none"; location.reload(); };
-              document.body.appendChild(notif);
+            // Only show notification banner for admin, not agents
+            if (!isAgent) {
+              var notif = document.getElementById("nexus-update-notif");
+              if (!notif) {
+                notif = document.createElement("div");
+                notif.id = "nexus-update-notif";
+                notif.style.cssText = "position:fixed;top:12px;right:12px;padding:10px 16px;background:#3b82f6;color:white;border-radius:8px;font-size:13px;cursor:pointer;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15)";
+                notif.onclick = function() { notif.style.display = "none"; location.reload(); };
+                document.body.appendChild(notif);
+              }
+              notif.textContent = "Nouvelles donnÃ©es â cliquez pour actualiser";
+              notif.style.display = "block";
             }
-            notif.textContent = "Nouvelles données — cliquez pour actualiser";
-            notif.style.display = "block";
           }
         });
       }, 20000);
@@ -2720,23 +2720,21 @@
       // Persist
       useEffect(function() { saveDenonceVisites(entries); }, [entries]);
 
-      // On mount (admin): pull fresh visits from server to catch changes from other users/devices
+      // On mount: pull fresh visits from server to catch changes from other users/devices
       useEffect(function() {
-        if (!isAgentUser) {
-          pullData().then(function(data) {
-            if (data && data.visites) {
-              var fresh = data.visites;
-              var currentRaw = localStorage.getItem("nexus_denonce_visites") || "[]";
-              var freshStr = JSON.stringify(fresh);
-              // Only update if data actually changed (avoids unnecessary push loops)
-              if (freshStr !== currentRaw) {
-                try { localStorage.setItem("nexus_denonce_visites", freshStr); } catch(e) {}
-                setEntries(fresh);
-              }
-              if (data.timestamp) _lastSyncTime = data.timestamp;
+        pullData().then(function(data) {
+          if (data && data.visites) {
+            var fresh = data.visites;
+            var currentRaw = localStorage.getItem("nexus_denonce_visites") || "[]";
+            var freshStr = JSON.stringify(fresh);
+            // Only update if data actually changed (avoids unnecessary push loops)
+            if (freshStr !== currentRaw) {
+              try { localStorage.setItem("nexus_denonce_visites", freshStr); } catch(e) {}
+              setEntries(fresh);
             }
-          });
-        }
+            if (data.timestamp) _lastSyncTime = data.timestamp;
+          }
+        });
       }, []);
 
       function addCustomAgent(name) {
