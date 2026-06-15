@@ -116,7 +116,7 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '—';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
-      var NEXUS_VERSION = "31";
+      var NEXUS_VERSION = "33";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -2641,6 +2641,7 @@
     const DenonceVisitesPage = ({ setCurrentPage, setSelectedLot, customAgents, setCustomAgents, user }) => {
       var isAgentUser = user && user.role === "agent" && user.agentName;
       var isPrescripteur = isAgentUser && getAgentType(user.agentName) === "Prescripteur";
+            var [visitMode, setVisitMode] = useState("denonce");
       var [entries, setEntries] = useState(function() { return getAllDenonceVisites(); });
       var [agent, setAgent] = useState(isAgentUser ? user.agentName : "");
       var [agentMode, setAgentMode] = useState("select"); // "select" or "custom"
@@ -2746,8 +2747,10 @@
       }
 
       function addEntry() {
-        if ((!selectedLotId && !isPrescripteur) || !agent || !dateVisite) return;
-        if (isPrescripteur && !selectedImmeuble) return;
+        var needsLot = !isPrescripteur || (isPrescripteur && visitMode === "visite");
+        if (!agent || !dateVisite) return;
+        if (needsLot && !selectedLotId) return;
+        if (!needsLot && !selectedImmeuble) return;
         var lot = selectedLotId ? LOTS.find(function(l) { return String(l.lot) === String(selectedLotId); }) : null;
         var newEntry = {
           id: Date.now(),
@@ -2759,6 +2762,7 @@
           date: dateVisite,
           client: client,
           type: getAgentType(agent) || "",
+              categorie: isPrescripteur ? visitMode : "visite",
           note: note
         };
         setEntries(function(prev) { return [newEntry].concat(prev); });
@@ -2797,6 +2801,16 @@
         // Form
         h("div", { className: "bg-white p-6 rounded-lg shadow" },
           h("h3", { className: "font-semibold mb-4 text-gray-800" }, "Nouvelle visite"),
+          isPrescripteur ? h("div", { className: "flex gap-6 mb-4 pb-3 border-b" },
+            h("label", { className: "flex items-center gap-2 cursor-pointer" },
+              h("input", { type: "radio", name: "visitMode", value: "denonce", checked: visitMode === "denonce", onChange: function() { setVisitMode("denonce"); setSelectedLotId(""); setSelectedLotLabel(""); }, className: "accent-indigo-600" }),
+              h("span", { className: "text-sm font-medium " + (visitMode === "denonce" ? "text-indigo-700" : "text-gray-500") }, "Dénonce")
+            ),
+            h("label", { className: "flex items-center gap-2 cursor-pointer" },
+              h("input", { type: "radio", name: "visitMode", value: "visite", checked: visitMode === "visite", onChange: function() { setVisitMode("visite"); }, className: "accent-indigo-600" }),
+              h("span", { className: "text-sm font-medium " + (visitMode === "visite" ? "text-indigo-700" : "text-gray-500") }, "Visite")
+            )
+          ) : null,
           h("div", { className: "grid grid-cols-4 gap-4 mb-4 nexus-grid-responsive nexus-form-stack" },
             // Agent (locked for agent users, select or custom for admin)
             h("div", {},
@@ -2852,8 +2866,8 @@
                 })
               )
             ),
-            // Lot (hidden for prescripteur in agent mode)
-            !isPrescripteur ? h("div", {},
+            // Lot (hidden for prescripteur in denonce mode, shown in visite mode)
+            (!isPrescripteur || (isPrescripteur && visitMode === "visite")) ? h("div", {},
               h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Lot *"),
               h("select", {
                 value: selectedLotId,
@@ -2896,7 +2910,8 @@
             )
           ),
           (function() {
-            var canSubmit = ((selectedLotId || isPrescripteur) && agent && dateVisite && (!isPrescripteur || selectedImmeuble));
+            var needsLotSubmit = !isPrescripteur || (isPrescripteur && visitMode === "visite");
+            var canSubmit = agent && dateVisite && (needsLotSubmit ? !!selectedLotId : !!selectedImmeuble);
             return h("button", {
               onClick: addEntry,
               disabled: !canSubmit,
@@ -2915,13 +2930,19 @@
             h("table", { className: "w-full text-sm" },
               h("thead", { className: "bg-gray-50" },
                 h("tr", {},
-                  [["date","Date"],["agent","Agent"],["lot","Lot"],["ville","Ville"],["client","Client"],["note","Note"]].map(function(col) {
-                    return h("th", {
-                      key: col[0],
-                      className: "px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100",
-                      onClick: function() { dvToggleSort(col[0]); }
-                    }, col[1] + (dvSortCol === col[0] ? (dvSortDir === "asc" ? " ▲" : " ▼") : ""));
-                  }),
+                  (function() {
+                    var showTypeCol = !isAgentUser || isPrescripteur;
+                    var cols = [["date","Date"],["agent","Agent"]];
+                    if (showTypeCol) cols.push(["categorie","Type"]);
+                    cols = cols.concat([["lot","Lot"],["ville","Ville"],["client","Client"],["note","Note"]]);
+                    return cols.map(function(col) {
+                      return h("th", {
+                        key: col[0],
+                        className: "px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100",
+                        onClick: function() { dvToggleSort(col[0]); }
+                      }, col[1] + (dvSortCol === col[0] ? (dvSortDir === "asc" ? " \u25b2" : " \u25bc") : ""));
+                    });
+                  })(),
                   h("th", { className: "px-3 py-2 text-center" }, "")
                 )
               ),
@@ -2934,19 +2955,25 @@
                   else if (dvSortCol === "ville") { va = (a.ville || "").toLowerCase(); vb = (b.ville || "").toLowerCase(); }
                   else if (dvSortCol === "client") { va = (a.client || "").toLowerCase(); vb = (b.client || "").toLowerCase(); }
                   else if (dvSortCol === "note") { va = (a.note || "").toLowerCase(); vb = (b.note || "").toLowerCase(); }
+                  else if (dvSortCol === "categorie") { va = (a.categorie || "").toLowerCase(); vb = (b.categorie || "").toLowerCase(); }
                   else { va = ""; vb = ""; }
                   if (va < vb) return dvSortDir === "asc" ? -1 : 1;
                   if (va > vb) return dvSortDir === "asc" ? 1 : -1;
                   return 0;
                 }).map(function(e, idx) {
+                  var showTypeCol = !isAgentUser || isPrescripteur;
+                  var catLabel = e.categorie === "denonce" ? "D\u00e9nonce" : e.categorie === "visite" ? "Visite" : "";
+                  var catColor = e.categorie === "denonce" ? "bg-amber-100 text-amber-700" : e.categorie === "visite" ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-400";
                   return h("tr", { key: e.id, className: (idx % 2 === 0 ? "bg-white" : "bg-gray-50") + " hover:bg-blue-50" },
                     h("td", { className: "px-3 py-2 font-medium" }, new Date(e.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })),
                     h("td", { className: "px-3 py-2" }, h("span", { className: "px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700" }, e.agent)),
+                    showTypeCol ? h("td", { className: "px-3 py-2" }, catLabel ? h("span", { className: "px-2 py-0.5 rounded text-xs font-medium " + catColor }, catLabel) : "\u2014") : null,
                     h("td", { className: "px-3 py-2 text-blue-600 font-semibold" }, e.lot),
                     h("td", { className: "px-3 py-2" }, e.ville),
                     h("td", { className: "px-3 py-2 text-gray-600" }, e.client || "\u2014"),
                     h("td", { className: "px-3 py-2 text-xs text-gray-500 max-w-xs truncate" }, e.note || ""),
                     h("td", { className: "px-3 py-2 text-center" }, h("button", { onClick: function() { removeEntry(e.id); }, className: "text-red-400 hover:text-red-600", title: "Supprimer" }, "\u2716"))
+                  );
                   );
                 })
               )
