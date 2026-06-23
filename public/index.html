@@ -2516,7 +2516,7 @@
             var _refresh = useState(0), refreshKey = _refresh[0], setRefreshKey = _refresh[1];
 
             var agentAccounts = useMemo(function() {
-              return getUsers().filter(function(u) { return u.role === "agent" && u.agentName; });
+              return getUsers().filter(function(u) { return u.role === "agent" && u.agentName; }).sort(function(a, b) { return (a.agentName || "").localeCompare(b.agentName || ""); });
             }, [refreshKey, accMsg]);
 
             function createAgentAccount() {
