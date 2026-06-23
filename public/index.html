@@ -2204,10 +2204,27 @@
       var [customAgentInput, setCustomAgentInput] = useState("");
       var [agentTypes, setAgentTypes] = useState(function() { return getAgentTypes(); });
       var [syncMsg, setSyncMsg] = useState("");
+      var [editUsername, setEditUsername] = useState("");
+      var [editPassword, setEditPassword] = useState("");
+      var [editCredMsg, setEditCredMsg] = useState("");
 
       // Persist to localStorage
       useEffect(function() { saveAgentImmData(data); }, [data]);
       useEffect(function() { saveAgentTypes(agentTypes); }, [agentTypes]);
+      useEffect(function() {
+        var users = getUsers();
+        var acc = users.find(function(u) { return u.role === "agent" && u.agentName === selectedAgent; });
+        if (acc) { setEditUsername(acc.username || ""); setEditPassword(acc.password || ""); }
+        else { setEditUsername(""); setEditPassword(""); }
+        setEditCredMsg("");
+      }, [selectedAgent]);
+      function saveAgentCredentials() {
+        if (!selectedAgent || !editUsername) { setEditCredMsg("Identifiant requis"); return; }
+        var users = getUsers();
+        var acc = users.find(function(u) { return u.role === "agent" && u.agentName === selectedAgent; });
+        if (acc) { acc.username = editUsername; acc.password = editPassword; saveUsers(users); pushData(); setEditCredMsg("Identifiants sauvegard\u00e9s !"); }
+        else { setEditCredMsg("Aucun compte trouv\u00e9 pour cet agent"); }
+      }
 
       function markChanged() { setSyncMsg(""); }
 
@@ -2352,6 +2369,19 @@
               AGENT_TYPE_OPTIONS.map(function(t) { return h("option", { key: t, value: t }, t); })
             )
           ) : null,
+          // Identifiants agent
+          selectedAgent ? h("div", { className: "grid grid-cols-3 gap-3 items-end" },
+            h("div", {},
+              h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Identifiant"),
+              h("input", { type: "text", value: editUsername, onChange: function(e) { setEditUsername(e.target.value); setEditCredMsg(""); }, className: "w-full px-3 py-2 border rounded-lg text-sm" })
+            ),
+            h("div", {},
+              h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Mot de passe"),
+              h("input", { type: "text", value: editPassword, onChange: function(e) { setEditPassword(e.target.value); setEditCredMsg(""); }, className: "w-full px-3 py-2 border rounded-lg text-sm" })
+            ),
+            h("button", { onClick: saveAgentCredentials, className: "px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium" }, "Sauvegarder")
+          ) : null,
+          editCredMsg ? h("p", { className: "text-sm text-green-600" }, editCredMsg) : null,
           // Assign immeuble dropdown
           selectedAgent ? h("div", {},
             h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Ajouter un immeuble \u00e0 " + selectedAgent),
