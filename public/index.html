@@ -116,7 +116,7 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '—';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
-      var NEXUS_VERSION = "33";
+      var NEXUS_VERSION = "34";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -379,11 +379,28 @@
       }
     }
 
-    function pushData() {
-      // Pull-merge-push: fetch server state, smart-merge visits, then push
+    function pushData(changedKeys) {
+      // Pull-merge-push: fetch server state, preserve unchanged data, smart-merge visits, then push
+      changedKeys = changedKeys || [];
       return pullData().then(function(serverData) {
         var data = _getAllData();
-        // Smart merge: SERVER is source of truth for existing visits.
+        // Preserve server data for keys NOT explicitly changed locally
+        // This prevents a stale browser from overwriting data it didn't modify
+        if (serverData) {
+          if (changedKeys.indexOf("agentImm") === -1 && serverData.agentImm) {
+            data.agentImm = serverData.agentImm;
+          }
+          if (changedKeys.indexOf("agentTypes") === -1 && serverData.agentTypes) {
+            data.agentTypes = serverData.agentTypes;
+          }
+          if (changedKeys.indexOf("commData") === -1 && serverData.commData) {
+            data.commData = serverData.commData;
+          }
+          if (changedKeys.indexOf("users") === -1 && serverData.users && serverData.users.length > 0) {
+            data.users = serverData.users;
+          }
+        }
+        // Smart merge: SERVER is source of truth for existing visits.// Smart merge: SERVER is source of truth for existing visits.
         // Only add LOCAL visits that were created after last sync (truly new, not yet on server).
         // This prevents resurrecting visits deleted by other users.
         if (serverData && serverData.visites) {
@@ -494,7 +511,7 @@
 
     function saveUsers(users) {
       localStorage.setItem("nexus_users", JSON.stringify(users));
-      pushData();
+      pushData(["users"]);
     }
 
     // ─── Shared UI helpers ───
@@ -1533,7 +1550,7 @@
           try { localStorage.setItem(COMM_LS_KEY, JSON.stringify(next)); } catch(e) {}
           return next;
         });
-        pushData();
+        pushData(["commData"]);
       }, []);
 
       const villes = useMemo(() => [...new Set(LOTS.map(l => l.ville))], []);
@@ -2156,7 +2173,7 @@
     }
     function saveAgentImmData(data) {
       try { localStorage.setItem(AGENT_IMM_LS_KEY, JSON.stringify(data)); } catch(e) {}
-      pushData();
+      pushData(["agentImm"]);
     }
 
     var AGENT_TYPE_LS_KEY = "nexus_agent_types";
@@ -2170,7 +2187,7 @@
     }
     function saveAgentTypes(data) {
       try { localStorage.setItem(AGENT_TYPE_LS_KEY, JSON.stringify(data)); } catch(e) {}
-      pushData();
+      pushData(["agentTypes"]);
     }
     function getAgentType(agentName) {
       var types = getAgentTypes();
@@ -2634,7 +2651,7 @@
     function saveDenonceVisites(arr) {
       try { localStorage.setItem(DENONCE_LS_KEY, JSON.stringify(arr)); } catch(e) {}
       // Push immediately (no debounce) to ensure deletions are synced before any refresh
-      pushData();
+      pushData(["visites"]);
     }
 
     // ─── Dénonce Visites Page ───
