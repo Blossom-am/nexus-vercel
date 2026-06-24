@@ -2222,7 +2222,7 @@
         if (!selectedAgent || !editUsername) { setEditCredMsg("Identifiant requis"); return; }
         var users = getUsers();
         var acc = users.find(function(u) { return u.role === "agent" && u.agentName === selectedAgent; });
-        if (acc) { acc.username = editUsername; acc.password = editPassword; saveUsers(users); pushData(); setEditCredMsg("Identifiants sauvegard\u00e9s !"); }
+        if (acc) { acc.username = editUsername; acc.password = editPassword; saveUsers(users); setEditCredMsg("Identifiants sauvegard\u00e9s !"); }
         else { setEditCredMsg("Aucun compte trouv\u00e9 pour cet agent"); }
       }
 
