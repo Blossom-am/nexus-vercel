@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "45";
+    var NEXUS_VERSION = "46";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -3073,7 +3073,7 @@
                   var showTypeCol = !isAgentUser || isPrescripteur;
                   var catLabel = e.categorie === "denonce" ? "D\u00e9nonce" : e.categorie === "visite" ? "Visite" : "";
                   var catColor = e.categorie === "denonce" ? "bg-amber-100 text-amber-700" : e.categorie === "visite" ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-400";
-                  return h("tr", { key: e.id, className: (idx % 2 === 0 ? "bg-white" : "bg-gray-50") + " hover:bg-blue-50" },
+                  return h("tr", { key: String(e.id) + "_" + idx, className: (idx % 2 === 0 ? "bg-white" : "bg-gray-50") + " hover:bg-blue-50" },
                     h("td", { className: "px-3 py-2 font-medium" }, new Date(e.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })),
                     h("td", { className: "px-3 py-2" }, h("span", { className: "px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700" }, e.agent)),
                     showTypeCol ? h("td", { className: "px-3 py-2" }, catLabel ? h("span", { className: "px-2 py-0.5 rounded text-xs font-medium " + catColor }, catLabel) : "\u2014") : null,
