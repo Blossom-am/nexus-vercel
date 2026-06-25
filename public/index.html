@@ -116,7 +116,8 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '—';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
-      var NEXUS_VERSION = "43";
+      window.errorLog = window.errorLog || [];
+    var NEXUS_VERSION = "44";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -771,7 +772,7 @@
 
       componentDidCatch(error, errorInfo) {
         console.error('Error caught by boundary:', error, errorInfo);
-        window.errorLog.push({ component: 'ErrorBoundary', error: String(error), info: errorInfo });
+        (window.errorLog = window.errorLog || []).push({ component: 'ErrorBoundary', error: String(error), info: errorInfo });
       }
 
       render() {
