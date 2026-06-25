@@ -116,7 +116,7 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : 'â';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' â¬/mÂ²' : 'â';
 
-      var NEXUS_VERSION = "40";
+      var NEXUS_VERSION = "41";
 
       // âââââââââââââââââââââââââââââââââââââ
       // RAW DATA - Exact copy from original
@@ -3008,38 +3008,37 @@
                     var sortableCols = ["date","agent","categorie","ville"];
                     var allVE = entries.filter(function(e) { return !isAgentUser || e.agent === user.agentName; });
                     return cols.map(function(col) {
-                      var isF = filterableCols.indexOf(col[0]) !== -1;
-                      var isS = sortableCols.indexOf(col[0]) !== -1;
-                      var uv = [];
-                      if (isF) { allVE.forEach(function(e) { var v = e[col[0]] || ""; if (v && uv.indexOf(v) === -1) uv.push(v); }); uv.sort(); }
-                      var af = dvFilters[col[0]] || [];
-                      return h("th", { key: col[0], className: "px-3 py-2 text-left select-none" + (isS ? " cursor-pointer hover:bg-gray-100" : ""), style: { position: "relative", whiteSpace: "nowrap" } },
-                        h("div", { style: { display: "flex", alignItems: "center", gap: "4px" } },
-                          h("span", { onClick: isS ? function() { dvToggleSort(col[0]); } : null, style: { flex: 1 } },
-                            col[1] + (dvSortCol === col[0] ? (dvSortDir === "asc" ? " \u25b2" : " \u25bc") : "")),
-                          isF ? h("span", {
-                            onClick: function(ev) { ev.stopPropagation(); setDvFilterOpen(dvFilterOpen === col[0] ? null : col[0]); },
-                            style: { cursor: "pointer", fontSize: "10px", opacity: af.length > 0 ? 1 : 0.3, color: af.length > 0 ? "#2563eb" : "inherit", padding: "2px 3px", borderRadius: "3px", background: af.length > 0 ? "#eff6ff" : "transparent" },
-                            title: "Filtrer"
-                          }, "\u25bc") : null
-                        ),
-                        isF && dvFilterOpen === col[0] ? h("div", {
-                          onClick: function(ev) { ev.stopPropagation(); },
-                          style: { position: "absolute", left: 0, top: "100%", background: "white", border: "1px solid #ddd", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", zIndex: 100, minWidth: "200px", maxHeight: "280px", overflowY: "auto", padding: "4px 0" }
-                        },
-                          h("div", { style: { padding: "6px 10px", borderBottom: "1px solid #eee", display: "flex", gap: "10px", alignItems: "center" } },
-                            h("button", { onClick: function() { dvClearFilter(col[0]); }, style: { fontSize: "11px", color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: "600" } }, "Tout"),
-                            h("button", { onClick: function() { dvSetters[col[0]](["__none__"]); }, style: { fontSize: "11px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: "600" } }, "Aucun"),
-                            h("span", { style: { marginLeft: "auto", fontSize: "11px", color: "#888" } }, af.length > 0 ? af.length + "/" + uv.length : ""),
-                          uv.map(function(val) {
-                            var ck = af.length === 0 || af.indexOf(val) !== -1;
-                            return h("label", { key: val, style: { display: "flex", alignItems: "center", padding: "3px 10px", cursor: "pointer", fontSize: "12px", whiteSpace: "nowrap" }, className: "hover:bg-gray-50" },
-                              h("input", { type: "checkbox", checked: ck, onChange: function() { dvToggleFilterVal(col[0], val); }, style: { marginRight: "8px", accentColor: "#2563eb" } }),
+                      var ck=col[0],cl=col[1];
+                      var isF=filterableCols.indexOf(ck)!==-1;
+                      var isS=sortableCols.indexOf(ck)!==-1;
+                      var uv=[];
+                      if(isF){allVE.forEach(function(e){var v=e[ck]||"";if(v&&uv.indexOf(v)===-1)uv.push(v);});uv.sort();}
+                      var af=dvFilters[ck]||[];
+                      var isOpen=isF&&dvFilterOpen===ck;
+                      var thArgs=["th",{key:ck,style:{position:"relative",cursor:isS?"pointer":"default",userSelect:"none",whiteSpace:"nowrap",background:af.length>0?"#e8f0fe":""},onClick:isS?function(){dvToggleSort(ck);}:undefined},
+                        h("div",{style:{display:"flex",alignItems:"center",gap:"4px"}},
+                          cl+(isS&&dvSortCol===ck?(dvSortDir==="asc"?" \u25b2":" \u25bc"):""),
+                          isF?h("span",{"data-dvfilter":"1",onClick:function(ev){ev.stopPropagation();setDvFilterOpen(isOpen?null:ck);},style:{cursor:"pointer",fontSize:"0.7em",color:af.length>0?"#2563eb":"#888",marginLeft:"2px"}},"\u25bc"):null,
+                          isF&&af.length>0?h("span",{style:{fontSize:"0.7em",color:"#2563eb"}},af.length+"/"+uv.length):null
+                        )
+                      ];
+                      if(isOpen){
+                        thArgs.push(h("div",{"data-dvfilter":"1",onClick:function(ev){ev.stopPropagation();},style:{position:"absolute",top:"100%",left:0,background:"#fff",border:"1px solid #ddd",borderRadius:"6px",boxShadow:"0 4px 12px rgba(0,0,0,0.15)",zIndex:100,minWidth:"200px",maxHeight:"280px",overflowY:"auto",padding:"4px 0"}},
+                          h("div",{style:{padding:"6px 10px",borderBottom:"1px solid #eee",display:"flex",gap:"10px",alignItems:"center"}},
+                            h("button",{onClick:function(){dvClearFilter(ck);},style:{fontSize:"11px",color:"#2563eb",background:"none",border:"none",cursor:"pointer",fontWeight:"bold"}},"Tout"),
+                            h("button",{onClick:function(){dvSelectAllFilter(ck,uv);},style:{fontSize:"11px",color:"#2563eb",background:"none",border:"none",cursor:"pointer",fontWeight:"bold"}},"Aucun"),
+                            af.length>0?h("span",{style:{fontStyle:"italic",fontSize:"11px",color:"#888"}},af.length+"/"+uv.length):null
+                          ),
+                          uv.map(function(val){
+                            var checked=af.length===0||af.indexOf(val)!==-1;
+                            return h("label",{key:val,style:{display:"flex",alignItems:"center",gap:"6px",padding:"4px 10px",cursor:"pointer",fontSize:"12px"}},
+                              h("input",{type:"checkbox",checked:checked,onChange:function(){dvToggleFilterVal(ck,val);}}),
                               val
                             );
                           })
-                        ) : null
-                      );
+                        ));
+                      }
+                      return h.apply(null,thArgs);
                     });
                   })(),
                   h("th", { className: "px-3 py-2 text-center" }, "")
