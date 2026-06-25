@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "44";
+    var NEXUS_VERSION = "45";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -2234,13 +2234,7 @@
         setSyncMsg("Paramètres copiés ! Collez-les dans Cowork pour synchroniser.");
       }
 
-      useEffect(function() {
-        function closeFilter(ev) {
-          if (dvFilterOpen && !ev.target.closest("[data-dvfilter]")) setDvFilterOpen(null);
-        }
-        document.addEventListener("click", closeFilter);
-        return function() { document.removeEventListener("click", closeFilter); };
-      }, [dvFilterOpen]);
+      
 
       // All agents = tracker + custom + any in data
       var allAgents = useMemo(function() {
@@ -2715,6 +2709,13 @@
       var [dvFilterType, setDvFilterType] = useState([]);
       var [dvFilterVille, setDvFilterVille] = useState([]);
       var [dvFilterOpen, setDvFilterOpen] = useState(null);
+      useEffect(function() {
+        function closeFilter(ev) {
+          if (dvFilterOpen && !ev.target.closest("[data-dvfilter]")) setDvFilterOpen(null);
+        }
+        document.addEventListener("click", closeFilter);
+        return function() { document.removeEventListener("click", closeFilter); };
+      }, [dvFilterOpen]);
       function dvToggleSort(col) { if (dvSortCol === col) { setDvSortDir(dvSortDir === "asc" ? "desc" : "asc"); } else { setDvSortCol(col); setDvSortDir(col === "date" ? "desc" : "asc"); } }
       var dvFilters = { agent: dvFilterAgent, categorie: dvFilterType, ville: dvFilterVille };
       var dvSetters = { agent: setDvFilterAgent, categorie: setDvFilterType, ville: setDvFilterVille };
