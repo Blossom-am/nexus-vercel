@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "47";
+    var NEXUS_VERSION = "48";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -2998,7 +2998,7 @@
             h("h3", { className: "font-semibold text-gray-800" }, "Visites d\u00e9nonc\u00e9es (" + (isAgentUser ? entries.filter(function(e) { return e.agent === user.agentName; }).length : entries.length) + ")")
           ),
           entries.length === 0 ? h("div", { className: "p-6 text-center text-gray-400 italic" }, "Aucune visite d\u00e9nonc\u00e9e pour le moment") :
-          h("div", { className: "overflow-x-auto nexus-table-wrap" },
+          h("div", { className: "nexus-table-wrap", style: { overflowX: dvFilterOpen ? "visible" : "auto" } },
             h("table", { className: "w-full text-sm" },
               h("thead", { className: "bg-gray-50" },
                 h("tr", {},
