@@ -116,7 +116,7 @@
       const fmt = (n) => n != null ? new Intl.NumberFormat('fr-FR').format(Math.round(n)) : '—';
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
-      var NEXUS_VERSION = "38";
+      var NEXUS_VERSION = "39";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -2233,6 +2233,14 @@
         setSyncMsg("Paramètres copiés ! Collez-les dans Cowork pour synchroniser.");
       }
 
+      useEffect(function() {
+        function closeFilter(ev) {
+          if (dvFilterOpen && !ev.target.closest("[data-dvfilter]")) setDvFilterOpen(null);
+        }
+        document.addEventListener("click", closeFilter);
+        return function() { document.removeEventListener("click", closeFilter); };
+      }, [dvFilterOpen]);
+
       // All agents = tracker + custom + any in data
       var allAgents = useMemo(function() {
         var base = TRACKER_AGENTS.map(function(a) { return a.n; });
@@ -2702,7 +2710,21 @@
       var [showSuccess, setShowSuccess] = useState(false);
       var [dvSortCol, setDvSortCol] = useState("date");
       var [dvSortDir, setDvSortDir] = useState("desc");
-      function dvToggleSort(col) { if (dvSortCol === col) { setDvSortDir(dvSortDir === "asc" ? "desc" : "asc"); } else { setDvSortCol(col); setDvSortDir("asc"); } }
+      var [dvFilterAgent, setDvFilterAgent] = useState([]);
+      var [dvFilterType, setDvFilterType] = useState([]);
+      var [dvFilterVille, setDvFilterVille] = useState([]);
+      var [dvFilterOpen, setDvFilterOpen] = useState(null);
+      function dvToggleSort(col) { if (dvSortCol === col) { setDvSortDir(dvSortDir === "asc" ? "desc" : "asc"); } else { setDvSortCol(col); setDvSortDir(col === "date" ? "desc" : "asc"); } }
+      var dvFilters = { agent: dvFilterAgent, categorie: dvFilterType, ville: dvFilterVille };
+      var dvSetters = { agent: setDvFilterAgent, categorie: setDvFilterType, ville: setDvFilterVille };
+      function dvToggleFilterVal(colKey, value) {
+        var cur = dvFilters[colKey] || []; var setter = dvSetters[colKey]; if (!setter) return;
+        var idx = cur.indexOf(value);
+        if (idx === -1) setter(cur.concat([value]));
+        else setter(cur.filter(function(v) { return v !== value; }));
+      }
+      function dvClearFilter(colKey) { if (dvSetters[colKey]) dvSetters[colKey]([]); setDvFilterOpen(null); }
+      function dvSelectAllFilter(colKey, vals) { if (dvSetters[colKey]) dvSetters[colKey](vals.slice()); setDvFilterOpen(null); }
 
       // All agents = tracker + custom
       var allAgents = useMemo(function() {
@@ -2982,19 +3004,55 @@
                     var cols = [["date","Date"],["agent","Agent"]];
                     if (showTypeCol) cols.push(["categorie","Type"]);
                     cols = cols.concat([["lot","Lot"],["ville","Ville"],["client","Client"],["note","Note"]]);
+                    var filterableCols = ["agent","categorie","ville"];
+                    var sortableCols = ["date","agent","categorie","ville"];
+                    var allVE = entries.filter(function(e) { return !isAgentUser || e.agent === user.agentName; });
                     return cols.map(function(col) {
-                      return h("th", {
-                        key: col[0],
-                        className: "px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100",
-                        onClick: function() { dvToggleSort(col[0]); }
-                      }, col[1] + (dvSortCol === col[0] ? (dvSortDir === "asc" ? " \u25b2" : " \u25bc") : ""));
+                      var isF = filterableCols.indexOf(col[0]) !== -1;
+                      var isS = sortableCols.indexOf(col[0]) !== -1;
+                      var uv = [];
+                      if (isF) { allVE.forEach(function(e) { var v = e[col[0]] || ""; if (v && uv.indexOf(v) === -1) uv.push(v); }); uv.sort(); }
+                      var af = dvFilters[col[0]] || [];
+                      return h("th", { key: col[0], className: "px-3 py-2 text-left select-none" + (isS ? " cursor-pointer hover:bg-gray-100" : ""), style: { position: "relative", whiteSpace: "nowrap" } },
+                        h("div", { style: { display: "flex", alignItems: "center", gap: "4px" } },
+                          h("span", { onClick: isS ? function() { dvToggleSort(col[0]); } : null, style: { flex: 1 } },
+                            col[1] + (dvSortCol === col[0] ? (dvSortDir === "asc" ? " \u25b2" : " \u25bc") : "")),
+                          isF ? h("span", {
+                            onClick: function(ev) { ev.stopPropagation(); setDvFilterOpen(dvFilterOpen === col[0] ? null : col[0]); },
+                            style: { cursor: "pointer", fontSize: "10px", opacity: af.length > 0 ? 1 : 0.3, color: af.length > 0 ? "#2563eb" : "inherit", padding: "2px 3px", borderRadius: "3px", background: af.length > 0 ? "#eff6ff" : "transparent" },
+                            title: "Filtrer"
+                          }, "\u25bc") : null
+                        ),
+                        isF && dvFilterOpen === col[0] ? h("div", {
+                          onClick: function(ev) { ev.stopPropagation(); },
+                          style: { position: "absolute", left: 0, top: "100%", background: "white", border: "1px solid #ddd", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", zIndex: 100, minWidth: "200px", maxHeight: "280px", overflowY: "auto", padding: "4px 0" }
+                        },
+                          h("div", { style: { padding: "6px 10px", borderBottom: "1px solid #eee", display: "flex", gap: "10px", alignItems: "center" } },
+                            h("button", { onClick: function() { dvClearFilter(col[0]); }, style: { fontSize: "11px", color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: "600" } }, "Tout"),
+                            h("button", { onClick: function() { dvSetters[col[0]](["__none__"]); }, style: { fontSize: "11px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: "600" } }, "Aucun"),
+                            h("span", { style: { marginLeft: "auto", fontSize: "11px", color: "#888" } }, af.length > 0 ? af.length + "/" + uv.length : "")
+                          ),
+                          uv.map(function(val) {
+                            var ck = af.length === 0 || af.indexOf(val) !== -1;
+                            return h("label", { key: val, style: { display: "flex", alignItems: "center", padding: "3px 10px", cursor: "pointer", fontSize: "12px", whiteSpace: "nowrap" }, className: "hover:bg-gray-50" },
+                              h("input", { type: "checkbox", checked: ck, onChange: function() { dvToggleFilterVal(col[0], val); }, style: { marginRight: "8px", accentColor: "#2563eb" } }),
+                              val
+                            );
+                          })
+                        ) : null
+                      );
                     });
                   })(),
                   h("th", { className: "px-3 py-2 text-center" }, "")
                 )
               ),
               h("tbody", {},
-                entries.filter(function(e) { return !isAgentUser || e.agent === user.agentName; }).slice().sort(function(a, b) {
+                entries.filter(function(e) { return !isAgentUser || e.agent === user.agentName; }).filter(function(e) {
+                  if (dvFilterAgent.length > 0 && dvFilterAgent.indexOf(e.agent || "") === -1) return false;
+                  if (dvFilterType.length > 0 && dvFilterType.indexOf(e.categorie || "") === -1) return false;
+                  if (dvFilterVille.length > 0 && dvFilterVille.indexOf(e.ville || "") === -1) return false;
+                  return true;
+                }).slice().sort(function(a, b) {
                   var va, vb;
                   if (dvSortCol === "date") { va = a.date || ""; vb = b.date || ""; }
                   else if (dvSortCol === "agent") { va = (a.agent || "").toLowerCase(); vb = (b.agent || "").toLowerCase(); }
@@ -3006,6 +3064,7 @@
                   else { va = ""; vb = ""; }
                   if (va < vb) return dvSortDir === "asc" ? -1 : 1;
                   if (va > vb) return dvSortDir === "asc" ? 1 : -1;
+                  if (dvSortCol !== "date") { return (b.date || "").localeCompare(a.date || ""); }
                   return 0;
                 }).map(function(e, idx) {
                   var showTypeCol = !isAgentUser || isPrescripteur;
