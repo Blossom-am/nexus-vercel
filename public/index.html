@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "46";
+    var NEXUS_VERSION = "47";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -2726,8 +2726,8 @@
         if (idx === -1) { var n = cur.concat([value]); if (allUV && n.length >= allUV.length) setter([]); else setter(n); }
         else { var n = cur.filter(function(v) { return v !== value; }); setter(n.length === 0 ? [] : n); }
       }
-      function dvClearFilter(colKey) { if (dvSetters[colKey]) dvSetters[colKey]([]); setDvFilterOpen(null); }
-      function dvSelectAllFilter(colKey, vals) { if (dvSetters[colKey]) dvSetters[colKey](vals.slice()); setDvFilterOpen(null); }
+      function dvClearFilter(colKey) { if (dvSetters[colKey]) dvSetters[colKey]([]); }
+      function dvSelectAllFilter(colKey, vals) { if (dvSetters[colKey]) dvSetters[colKey](vals.slice());; }
 
       // All agents = tracker + custom
       var allAgents = useMemo(function() {
@@ -3027,7 +3027,7 @@
                           }, "\u25bc") : null
                         ),
                         isF && dvFilterOpen === col[0] ? h("div", {
-                          onClick: function(ev) { ev.stopPropagation(); },
+                          "data-dvfilter": "1", onClick: function(ev) { ev.stopPropagation(); },
                           style: { position: "absolute", left: 0, top: "100%", background: "white", border: "1px solid #ddd", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)", zIndex: 100, minWidth: "200px", maxHeight: "280px", overflowY: "auto", padding: "4px 0" }
                         },
                           h("div", { style: { padding: "6px 10px", borderBottom: "1px solid #eee", display: "flex", gap: "10px", alignItems: "center" } },
