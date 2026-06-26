@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "48";
+    var NEXUS_VERSION = "49";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -3077,7 +3077,7 @@
                     h("td", { className: "px-3 py-2 font-medium" }, new Date(e.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })),
                     h("td", { className: "px-3 py-2" }, h("span", { className: "px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700" }, e.agent)),
                     showTypeCol ? h("td", { className: "px-3 py-2" }, catLabel ? h("span", { className: "px-2 py-0.5 rounded text-xs font-medium " + catColor }, catLabel) : "\u2014") : null,
-                    h("td", { className: "px-3 py-2 text-blue-600 font-semibold" }, e.lot),
+                    h("td", { className: "px-3 py-2" }, h("div", {}, h("span", { className: "text-blue-600 font-semibold" }, e.lot), (function() { var _f = LOTS.find(function(_l) { return String(_l.lot) === String(e.lot); }); return _f && _f.porte ? h("div", { className: "text-gray-500 text-xs" }, "Porte " + _f.porte) : null; })())),
                     h("td", { className: "px-3 py-2" }, e.ville),
                     h("td", { className: "px-3 py-2 text-gray-600" }, e.client || "\u2014"),
                     h("td", { className: "px-3 py-2 text-xs text-gray-500 max-w-xs truncate" }, e.note || ""),
