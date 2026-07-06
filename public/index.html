@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "50";
+    var NEXUS_VERSION = "51";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -1052,13 +1052,13 @@
                   h("p", {}, "Asset: " + (building.lots.length > 0 ? building.lots[0].assetId : building.assetIdCdc)),
                   h("p", {}, "Lots: " + building.lots.length),
                   h("div", { className: "grid grid-cols-2 gap-x-4 mt-1" },
-                    h("p", {}, "Appts: " + building.lots.filter(function(l){return l.nature==="APT"}).length),
+                    h("p", {}, "Appts: " + building.lots.filter(function(l){return l.nature==="APT"||l.nature==="PAV"}).length),
                     h("p", {}, "Parkings: " + building.lots.filter(function(l){return l.nature==="STN"}).length),
-                    h("p", { className: "text-red-600" }, "Appts vacants: " + building.lots.filter(function(l){return l.nature==="APT" && l.statut==="VACANT"}).length),
+                    h("p", { className: "text-red-600" }, "Appts vacants: " + building.lots.filter(function(l){return (l.nature==="APT"||l.nature==="PAV") && l.statut==="VACANT"}).length),
                     h("p", { className: "text-red-600" }, "Park. vacants: " + building.lots.filter(function(l){return l.nature==="STN" && l.statut==="VACANT"}).length)
                   ),
                   (function() {
-                    var ba = building.lots.filter(function(l){return l.nature==="APT"});
+                    var ba = building.lots.filter(function(l){return l.nature==="APT"||l.nature==="PAV"});
                     var bp = building.lots.filter(function(l){return l.nature==="STN"});
                     var surfT = ba.reduce(function(s,l){return s+(l.sha||0)},0);
                     var surfO = ba.filter(function(l){return l.statut==="OCCUPE"}).reduce(function(s,l){return s+(l.sha||0)},0);
