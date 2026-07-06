@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "51";
+    var NEXUS_VERSION = "52";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -1755,6 +1755,10 @@
     }
 
     // Lot Detail page
+    var PLAN_URLS = {};
+    // Load plan URLs from external file
+    fetch("plan_urls.json").then(function(r){return r.json();}).then(function(d){PLAN_URLS=d;}).catch(function(){});
+
     const LotDetailPage = ({ lot, setCurrentPage, user }) => {
       var isAgentDetail = user && user.role === "agent";
       if (!lot) return h("div", {}, "Aucun lot sélectionné");
@@ -1852,7 +1856,7 @@
           h("p", { className: "text-gray-600" }, `${lot.ville} • ${NATURE_LABELS[lot.nature] || lot.nature}`)
         ),
         h("div", { className: "flex gap-2 border-b" },
-          (isAgentDetail ? ["kpis", "photos"] : ["kpis", "visites", "actions", "commentaires", "photos"]).map(t =>
+          (isAgentDetail ? ["kpis", "plan", "photos"] : ["kpis", "visites", "actions", "commentaires", "plan", "photos"]).map(t =>
             h("button", {
               key: t,
               onClick: () => setTab(t),
@@ -2153,6 +2157,38 @@
                 )
               )
             )
+          ),
+          tab === "plan" && h("div", { className: "space-y-4" },
+            (function() {
+              var planUrl = PLAN_URLS[lot.lot];
+              if (!planUrl) return h("div", { className: "bg-gray-100 h-48 rounded flex items-center justify-center" },
+                h("p", { className: "text-gray-500 italic" }, "Aucun plan disponible pour ce lot")
+              );
+              return h("div", {},
+                h("div", { className: "flex gap-3 mb-4" },
+                  h("a", {
+                    href: planUrl,
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    className: "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2",
+                  },
+                    "\ud83d\udcc4 Ouvrir le plan (PDF)"
+                  ),
+                  h("a", {
+                    href: planUrl.replace("dl=0", "dl=1"),
+                    className: "px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 inline-flex items-center gap-2",
+                  },
+                    "\u2b07\ufe0f T\u00e9l\u00e9charger"
+                  )
+                ),
+                h("iframe", {
+                  src: planUrl.replace("dl=0", "raw=1"),
+                  className: "w-full rounded border border-gray-300",
+                  style: { height: "700px" },
+                  title: "Plan du lot " + lot.lot,
+                })
+              );
+            })()
           ),
           tab === "photos" && h("div", { className: "space-y-4" },
             h("div", { className: "bg-gray-100 h-96 rounded flex items-center justify-center" },
