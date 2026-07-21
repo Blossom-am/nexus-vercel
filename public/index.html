@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "52";
+    var NEXUS_VERSION = "53";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -1513,8 +1513,8 @@
       const [page, setPage] = useState(0);
       const itemsPerPage = 25;
 
-      var COMM_OPTIONS = ["Disponible", "Offre acceptée", "Sous Promesse", "Vendu", "Non Disponible"];
-      var COMM_COLORS = {"Disponible":"bg-blue-100 text-blue-800","Offre acceptée":"bg-yellow-100 text-yellow-800","Sous Promesse":"bg-orange-100 text-orange-800","Vendu":"bg-green-100 text-green-800","Non Disponible":"bg-gray-200 text-gray-600"};
+      var COMM_OPTIONS = ["Disponible", "Sous option", "Offre acceptée", "Sous Promesse", "Vendu", "Non Disponible"];
+      var COMM_COLORS = {"Disponible":"bg-blue-100 text-blue-800","Sous option":"bg-amber-100 text-amber-800","Offre acceptée":"bg-yellow-100 text-yellow-800","Sous Promesse":"bg-orange-100 text-orange-800","Vendu":"bg-green-100 text-green-800","Non Disponible":"bg-gray-200 text-gray-600"};
       var COMM_LS_KEY = "nexus_lot_commercialisation";
       var COMM_INIT = {"000979": "Sous Promesse", "001004": "Sous Promesse", "001007": "Sous Promesse", "001013": "Sous Promesse", "001036": "Offre acceptée", "001046": "Sous Promesse", "001049": "Sous Promesse", "001062": "Sous Promesse", "001939": "Sous Promesse", "002563": "Sous Promesse", "002564": "Sous Promesse", "003125": "Offre acceptée", "003960": "Offre acceptée", "003980": "Offre acceptée", "004003": "Offre acceptée", "004035": "Offre acceptée", "004334": "Sous Promesse", "004344": "Sous Promesse", "004357": "Offre acceptée", "004368": "Sous Promesse", "004377": "Offre acceptée", "004391": "Sous Promesse", "004745": "Sous Promesse", "004750": "Sous Promesse", "004751": "Sous Promesse", "004754": "Offre acceptée", "005898": "Sous Promesse", "005908": "Sous Promesse", "005910": "Sous Promesse", "005923": "Sous Promesse", "005958": "Sous Promesse", "005961": "Sous Promesse", "005962": "Sous Promesse", "006011": "Sous Promesse", "006123": "Sous Promesse", "006167": "Sous Promesse", "006175": "Sous Promesse", "006179": "Sous Promesse", "006187": "Sous Promesse", "006188": "Sous Promesse", "006211": "Sous Promesse", "006228": "Sous Promesse", "006242": "Sous Promesse", "006260": "Sous Promesse", "006261": "Sous Promesse", "006818": "Sous Promesse", "006820": "Vendu", "006822": "Sous Promesse", "006823": "Sous Promesse", "006824": "Sous Promesse", "006825": "Sous Promesse", "006826": "Sous Promesse", "006827": "Sous Promesse", "006828": "Vendu", "006833": "Sous Promesse", "006834": "Sous Promesse", "006835": "Vendu", "006836": "Sous Promesse", "006843": "Sous Promesse", "006844": "Vendu", "006845": "Sous Promesse", "006846": "Sous Promesse", "006847": "Sous Promesse", "006245": "Offre acceptée", "004957": "Offre acceptée", "004989": "Offre acceptée", "003794": "Offre acceptée", "003820": "Offre acceptée", "001059": "Offre acceptée", "005914": "Offre acceptée", "006018": "Offre acceptée", "006200": "Offre acceptée", "001001": "Offre acceptée", "001066": "Offre acceptée", "006183": "Offre acceptée", "006263": "Offre acceptée"};
 
@@ -2829,6 +2829,27 @@
       // Persist
       useEffect(function() { saveDenonceVisites(entries); }, [entries]);
 
+      // Option expiration timer
+      useEffect(function() {
+        function checkExpired() {
+          var cd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
+          var changed = false;
+          entries.forEach(function(e) {
+            if (e.categorie === "option" && e.optionExpiry && e.optionExpiry <= Date.now() && cd[e.lot] === "Sous option") {
+              cd[e.lot] = "Disponible";
+              changed = true;
+            }
+          });
+          if (changed) {
+            localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(cd));
+            pushData(["commData"]);
+          }
+        }
+        checkExpired();
+        var timer = setInterval(checkExpired, 30000);
+        return function() { clearInterval(timer); };
+      }, [entries]);
+
       // On mount: pull fresh visits from server to catch changes from other users/devices
       useEffect(function() {
         pullData().then(function(data) {
@@ -2855,10 +2876,20 @@
       }
 
       function addEntry() {
-        var needsLot = !isPrescripteur || (isPrescripteur && visitMode === "visite");
+        var needsLot = !isPrescripteur || (isPrescripteur && (visitMode === "visite" || visitMode === "option"));
         if (!agent || !dateVisite) return;
         if (needsLot && !selectedLotId) return;
         if (!needsLot && !selectedImmeuble) return;
+        if (selectedLotId) {
+          var _cd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
+          if (_cd[selectedLotId] === "Sous option") {
+            var _oh = entries.find(function(e) { return e.lot === selectedLotId && e.categorie === "option" && e.optionExpiry && e.optionExpiry > Date.now(); });
+            if (_oh && _oh.agent !== agent) { alert("Ce lot est sous option par " + _oh.agent); return; }
+            if (_oh && _oh.agent === agent && visitMode !== "option") { alert("Convertissez votre option existante."); return; }
+            if (!_oh && visitMode === "option") { /* expired, allow new option */ }
+            else if (!_oh) { /* no active option, proceed */ }
+          }
+        }
         var lot = selectedLotId ? LOTS.find(function(l) { return String(l.lot) === String(selectedLotId); }) : null;
         var newEntry = {
           id: Date.now(),
@@ -2871,9 +2902,17 @@
           client: client,
           type: getAgentType(agent) || "",
               categorie: isPrescripteur ? visitMode : "visite",
-          note: note
+          note: note,
+          optionExpiry: visitMode === "option" ? Date.now() + 600000 : null
         };
         setEntries(function(prev) { return [newEntry].concat(prev); });
+        // Handle option: update commercialisation
+        if (visitMode === "option" && selectedLotId) {
+          var _ocd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
+          _ocd[selectedLotId] = "Sous option";
+          localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(_ocd));
+          pushData(["commData"]);
+        }
         // Also save to lot-level localStorage for the indicateurs page
         if (selectedLotId) {
           var lsVisits = getLotData(selectedLotId, "visits");
@@ -2899,6 +2938,21 @@
         setEntries(function(prev) { return prev.filter(function(e) { return e.id !== id; }); });
       }
 
+      function convertOption(entry, newCat) {
+        setEntries(function(prev) {
+          return prev.map(function(e) {
+            if (e.id === entry.id) return Object.assign({}, e, { categorie: newCat, optionExpiry: null });
+            return e;
+          });
+        });
+        var _ccd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
+        if (_ccd[entry.lot] === "Sous option") {
+          _ccd[entry.lot] = "Disponible";
+          localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(_ccd));
+          pushData(["commData"]);
+        }
+      }
+
       return h("div", { className: "space-y-6" },
         h("h2", { className: "text-2xl font-bold" }, "D\u00e9nonce visites"),
         h("p", { className: "text-gray-500 text-sm" }, "Saisissez les visites r\u00e9alis\u00e9es par les agents. Elles seront int\u00e9gr\u00e9es automatiquement dans les indicateurs."),
@@ -2913,6 +2967,10 @@
             h("label", { className: "flex items-center gap-2 cursor-pointer" },
               h("input", { type: "radio", name: "visitMode", value: "denonce", checked: visitMode === "denonce", onChange: function() { setVisitMode("denonce"); setSelectedLotId(""); setSelectedLotLabel(""); }, className: "accent-indigo-600" }),
               h("span", { className: "text-sm font-medium " + (visitMode === "denonce" ? "text-indigo-700" : "text-gray-500") }, "Dénonce")
+            ),
+            h("label", { className: "flex items-center gap-2 cursor-pointer" },
+              h("input", { type: "radio", name: "visitMode", value: "option", checked: visitMode === "option", onChange: function() { setVisitMode("option"); setSelectedLotId(""); setSelectedLotLabel(""); }, className: "accent-amber-600" }),
+              h("span", { className: "text-sm font-medium " + (visitMode === "option" ? "text-amber-700" : "text-gray-500") }, "Option")
             ),
             h("label", { className: "flex items-center gap-2 cursor-pointer" },
               h("input", { type: "radio", name: "visitMode", value: "visite", checked: visitMode === "visite", onChange: function() { setVisitMode("visite"); }, className: "accent-indigo-600" }),
@@ -3107,8 +3165,8 @@
                   return 0;
                 }).map(function(e, idx) {
                   var showTypeCol = !isAgentUser || isPrescripteur;
-                  var catLabel = e.categorie === "denonce" ? "D\u00e9nonce" : e.categorie === "visite" ? "Visite" : "";
-                  var catColor = e.categorie === "denonce" ? "bg-amber-100 text-amber-700" : e.categorie === "visite" ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-400";
+                  var catLabel = e.categorie === "denonce" ? "D\u00e9nonce" : e.categorie === "visite" ? "Visite" : e.categorie === "option" ? (e.optionExpiry && e.optionExpiry > Date.now() ? "Option" : "Option (expir\u00e9e)") : "";
+                  var catColor = e.categorie === "denonce" ? "bg-amber-100 text-amber-700" : e.categorie === "visite" ? "bg-teal-100 text-teal-700" : e.categorie === "option" ? (e.optionExpiry && e.optionExpiry > Date.now() ? "bg-purple-100 text-purple-700" : "bg-gray-200 text-gray-500") : "bg-gray-100 text-gray-400";
                   return h("tr", { key: String(e.id) + "_" + idx, className: (idx % 2 === 0 ? "bg-white" : "bg-gray-50") + " hover:bg-blue-50" },
                     h("td", { className: "px-3 py-2 font-medium" }, new Date(e.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })),
                     h("td", { className: "px-3 py-2" }, h("span", { className: "px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700" }, e.agent)),
@@ -3117,7 +3175,7 @@
                     h("td", { className: "px-3 py-2" }, e.ville),
                     h("td", { className: "px-3 py-2 text-gray-600" }, e.client || "\u2014"),
                     h("td", { className: "px-3 py-2 text-xs text-gray-500 max-w-xs truncate" }, e.note || ""),
-                    h("td", { className: "px-3 py-2 text-center" }, h("button", { onClick: function() { removeEntry(e.id); }, className: "text-red-400 hover:text-red-600", title: "Supprimer" }, "\u2716"))
+                    h("td", { className: "px-3 py-2 text-center" }, e.categorie === "option" && e.optionExpiry && e.optionExpiry > Date.now() && e.agent === (user && user.agentName) ? h("span", { className: "flex gap-1 items-center justify-center" }, h("button", { onClick: function() { convertOption(e, "denonce"); }, className: "text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded hover:bg-amber-200", title: "Convertir en d\u00e9nonce" }, "D\u00e9n"), h("button", { onClick: function() { convertOption(e, "visite"); }, className: "text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded hover:bg-teal-200", title: "Convertir en visite" }, "Vis"), h("button", { onClick: function() { removeEntry(e.id); }, className: "text-red-400 hover:text-red-600 ml-1", title: "Supprimer" }, "\u2716")) : h("button", { onClick: function() { removeEntry(e.id); }, className: "text-red-400 hover:text-red-600", title: "Supprimer" }, "\u2716"))
                   );
                 })
               )
