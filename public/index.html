@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "57";
+    var NEXUS_VERSION = "58";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -347,6 +347,7 @@
     var API_URL = "/api/sync";
     var API_AUTH = "nexus2026";
     var _lastSyncTime = 0;
+    var _syncLock = false;
 
     // Read current state from localStorage (source of truth for push)
     function _getAllData() {
@@ -383,6 +384,7 @@
     function pushData(changedKeys) {
       // Pull-merge-push: fetch server state, preserve unchanged data, smart-merge visits, then push
       changedKeys = changedKeys || [];
+      _syncLock = true;
       return pullData().then(function(serverData) {
         var data = _getAllData();
         // Preserve server data for keys NOT explicitly changed locally
@@ -426,6 +428,7 @@
           headers: { "Authorization": "Bearer " + API_AUTH, "Content-Type": "application/json" },
           body: JSON.stringify(data)
         }).then(function(r) {
+          _syncLock = false;
           var ok = r.ok;
           // Visual feedback
           var indicator = document.getElementById("nexus-sync-indicator");
@@ -450,8 +453,8 @@
             });
           }
           return false;
-        }).catch(function() { return false; });
-      }).catch(function() { return false; });
+        }).catch(function() { _syncLock = false; return false; });
+      }).catch(function() { _syncLock = false; return false; });
     }
 
     function pullData() {
@@ -470,6 +473,7 @@
     // Gentle periodic sync — pull every 20s, update localStorage silently, show notification
     function startPeriodicSync() {
       setInterval(function() {
+        if (_syncLock) return;
         // Check if user is agent (for notification display only)
         var isAgent = false;
         try {
@@ -2844,6 +2848,7 @@
             localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(cd));
             pushData(["commData"]);
           }
+          setCommData(cd);
         }
         checkExpired();
         var timer = setInterval(checkExpired, 30000);
