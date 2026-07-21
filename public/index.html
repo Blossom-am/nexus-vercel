@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "54";
+    var NEXUS_VERSION = "55";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -1513,8 +1513,8 @@
       const [page, setPage] = useState(0);
       const itemsPerPage = 25;
 
-      var COMM_OPTIONS = ["Disponible", "Sous option", "Offre acceptée", "Sous Promesse", "Vendu", "Non Disponible"];
-      var COMM_COLORS = {"Disponible":"bg-blue-100 text-blue-800","Sous option":"bg-amber-100 text-amber-800","Offre acceptée":"bg-yellow-100 text-yellow-800","Sous Promesse":"bg-orange-100 text-orange-800","Vendu":"bg-green-100 text-green-800","Non Disponible":"bg-gray-200 text-gray-600"};
+      var COMM_OPTIONS = ["Disponible", "Option", "Offre acceptée", "Sous Promesse", "Vendu", "Non Disponible"];
+      var COMM_COLORS = {"Disponible":"bg-blue-100 text-blue-800","Option":"bg-amber-100 text-amber-800","Offre acceptée":"bg-yellow-100 text-yellow-800","Sous Promesse":"bg-orange-100 text-orange-800","Vendu":"bg-green-100 text-green-800","Non Disponible":"bg-gray-200 text-gray-600"};
       var COMM_LS_KEY = "nexus_lot_commercialisation";
       var COMM_INIT = {"000979": "Sous Promesse", "001004": "Sous Promesse", "001007": "Sous Promesse", "001013": "Sous Promesse", "001036": "Offre acceptée", "001046": "Sous Promesse", "001049": "Sous Promesse", "001062": "Sous Promesse", "001939": "Sous Promesse", "002563": "Sous Promesse", "002564": "Sous Promesse", "003125": "Offre acceptée", "003960": "Offre acceptée", "003980": "Offre acceptée", "004003": "Offre acceptée", "004035": "Offre acceptée", "004334": "Sous Promesse", "004344": "Sous Promesse", "004357": "Offre acceptée", "004368": "Sous Promesse", "004377": "Offre acceptée", "004391": "Sous Promesse", "004745": "Sous Promesse", "004750": "Sous Promesse", "004751": "Sous Promesse", "004754": "Offre acceptée", "005898": "Sous Promesse", "005908": "Sous Promesse", "005910": "Sous Promesse", "005923": "Sous Promesse", "005958": "Sous Promesse", "005961": "Sous Promesse", "005962": "Sous Promesse", "006011": "Sous Promesse", "006123": "Sous Promesse", "006167": "Sous Promesse", "006175": "Sous Promesse", "006179": "Sous Promesse", "006187": "Sous Promesse", "006188": "Sous Promesse", "006211": "Sous Promesse", "006228": "Sous Promesse", "006242": "Sous Promesse", "006260": "Sous Promesse", "006261": "Sous Promesse", "006818": "Sous Promesse", "006820": "Vendu", "006822": "Sous Promesse", "006823": "Sous Promesse", "006824": "Sous Promesse", "006825": "Sous Promesse", "006826": "Sous Promesse", "006827": "Sous Promesse", "006828": "Vendu", "006833": "Sous Promesse", "006834": "Sous Promesse", "006835": "Vendu", "006836": "Sous Promesse", "006843": "Sous Promesse", "006844": "Vendu", "006845": "Sous Promesse", "006846": "Sous Promesse", "006847": "Sous Promesse", "006245": "Offre acceptée", "004957": "Offre acceptée", "004989": "Offre acceptée", "003794": "Offre acceptée", "003820": "Offre acceptée", "001059": "Offre acceptée", "005914": "Offre acceptée", "006018": "Offre acceptée", "006200": "Offre acceptée", "001001": "Offre acceptée", "001066": "Offre acceptée", "006183": "Offre acceptée", "006263": "Offre acceptée"};
 
@@ -2835,7 +2835,7 @@
           var cd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
           var changed = false;
           entries.forEach(function(e) {
-            if (e.categorie === "option" && e.optionExpiry && e.optionExpiry <= Date.now() && cd[e.lot] === "Sous option") {
+            if (e.categorie === "option" && e.optionExpiry && e.optionExpiry <= Date.now() && cd[e.lot] === "Option") {
               cd[e.lot] = "Disponible";
               changed = true;
             }
@@ -2882,7 +2882,7 @@
         if (!needsLot && !selectedImmeuble) return;
         if (selectedLotId) {
           var _cd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
-          if (_cd[selectedLotId] === "Sous option") {
+          if (_cd[selectedLotId] === "Option") {
             var _oh = entries.find(function(e) { return e.lot === selectedLotId && e.categorie === "option" && e.optionExpiry && e.optionExpiry > Date.now(); });
             if (_oh && _oh.agent !== agent) { alert("Ce lot est sous option par " + _oh.agent); return; }
             if (_oh && _oh.agent === agent && visitMode !== "option") { alert("Convertissez votre option existante."); return; }
@@ -2909,7 +2909,7 @@
         // Handle option: update commercialisation
         if (visitMode === "option" && selectedLotId) {
           var _ocd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
-          _ocd[selectedLotId] = "Sous option";
+          _ocd[selectedLotId] = "Option";
           localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(_ocd));
           pushData(["commData"]);
         }
@@ -2946,7 +2946,7 @@
           });
         });
         var _ccd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
-        if (_ccd[entry.lot] === "Sous option") {
+        if (_ccd[entry.lot] === "Option") {
           _ccd[entry.lot] = "Disponible";
           localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(_ccd));
           pushData(["commData"]);
