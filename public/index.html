@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "55";
+    var NEXUS_VERSION = "56";
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -2720,7 +2720,7 @@
     function saveDenonceVisites(arr) {
       try { localStorage.setItem(DENONCE_LS_KEY, JSON.stringify(arr)); } catch(e) {}
       // Push immediately (no debounce) to ensure deletions are synced before any refresh
-      pushData(["visites"]);
+      pushData(["visites", "commData"]);
     }
 
     // ─── Dénonce Visites Page ───
@@ -2905,14 +2905,13 @@
           note: note,
           optionExpiry: visitMode === "option" ? Date.now() + 600000 : null
         };
-        setEntries(function(prev) { return [newEntry].concat(prev); });
-        // Handle option: update commercialisation
+        // Handle option: update commercialisation BEFORE setEntries to avoid race condition
         if (visitMode === "option" && selectedLotId) {
           var _ocd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
           _ocd[selectedLotId] = "Option";
           localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(_ocd));
-          pushData(["commData"]);
         }
+        setEntries(function(prev) { return [newEntry].concat(prev); });
         // Also save to lot-level localStorage for the indicateurs page
         if (selectedLotId) {
           var lsVisits = getLotData(selectedLotId, "visits");
