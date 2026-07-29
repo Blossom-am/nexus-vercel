@@ -117,7 +117,18 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "60";
+    var NEXUS_VERSION = "61";
+
+      // v61: Email notification for commercialisation status changes (test: Safti only)
+      function notifyStatusChange(lot, ville, oldStatus, newStatus, changeType) {
+        try {
+          fetch("/api/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer nexus2026" },
+            body: JSON.stringify({ to: "yoel.cytron@blossom-am.com", agentName: "Safti", lot: lot, ville: ville, oldStatus: oldStatus, newStatus: newStatus, changeType: changeType })
+          }).then(function(r) { return r.json(); }).then(function(d) { console.log("Notify sent:", d); }).catch(function(e) { console.error("Notify error:", e); });
+        } catch(e) { console.error("Notify error:", e); }
+      }
 
       // ─────────────────────────────────────
       // RAW DATA - Exact copy from original
@@ -1549,6 +1560,7 @@
       });
 
       var saveComm = useCallback(function(lotKey, val) {
+        var _oldVal = (JSON.parse(localStorage.getItem(COMM_LS_KEY) || "{}")[lotKey]) || "Disponible";
         setCommData(function(prev) {
           var next = Object.assign({}, prev);
           if (val) { next[lotKey] = val; } else { delete next[lotKey]; }
@@ -1556,6 +1568,7 @@
           return next;
         });
         pushData(["commData"]);
+        if (val !== _oldVal) { var _li = LOTS.find(function(l) { return l.lot === lotKey; }); var _ville = _li ? _li.ville : ""; var _ct = ""; if (val === "Option" && _oldVal === "Disponible") _ct = "option_placed"; else if (val === "Disponible" && _oldVal !== "Disponible") _ct = "became_available"; else if (val !== "Disponible" && val !== "Option" && (_oldVal === "Disponible" || _oldVal === "Option")) _ct = "became_unavailable"; if (_ct) notifyStatusChange(lotKey, _ville, _oldVal, val, _ct); }
       }, []);
 
       const villes = useMemo(() => [...new Set(LOTS.map(l => l.ville))], []);
@@ -2838,15 +2851,18 @@
         function checkExpired() {
           var cd = JSON.parse(localStorage.getItem("nexus_lot_commercialisation") || "{}");
           var changed = false;
+          var _expLots = [];
           entries.forEach(function(e) {
             if (e.categorie === "option" && e.optionExpiry && e.optionExpiry <= Date.now() && cd[e.lot] === "Option") {
               cd[e.lot] = "Disponible";
               changed = true;
+              _expLots.push(e.lot);
             }
           });
           if (changed) {
             localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(cd));
             pushData(["commData"]);
+            _expLots.forEach(function(_el) { var _li = LOTS.find(function(l) { return l.lot === _el; }); notifyStatusChange(_el, _li ? _li.ville : "", "Option", "Disponible", "option_expired"); });
           }
         }
         checkExpired();
@@ -2915,6 +2931,7 @@
           _ocd[selectedLotId] = "Option";
           localStorage.setItem("nexus_lot_commercialisation", JSON.stringify(_ocd));
           _syncLock = true;
+          var _oli = LOTS.find(function(l) { return l.lot === selectedLotId; }); notifyStatusChange(selectedLotId, _oli ? _oli.ville : "", "Disponible", "Option", "option_placed");
         }
         setEntries(function(prev) { return [newEntry].concat(prev); });
         // Also save to lot-level localStorage for the indicateurs page
