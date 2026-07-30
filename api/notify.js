@@ -1,5 +1,3 @@
-const nodemailer = require('nodemailer');
-
 module.exports = async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -56,26 +54,29 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Unknown changeType: ' + changeType });
     }
 
-    // Send email via SMTP
-    var transporter = nodemailer.createTransport({
-      host: 'smtp.office365.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER || 'Nexus@blossom-am.com',
-        pass: process.env.SMTP_PASS
+    // Send email via Resend API
+    var resendResp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
+        'Content-Type': 'application/json'
       },
-      tls: { ciphers: 'SSLv3', rejectUnauthorized: false }
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM || 'Nexus <onboarding@resend.dev>',
+        to: [to],
+        subject: subject,
+        html: htmlBody
+      })
     });
 
-    await transporter.sendMail({
-      from: '"Nexus Dashboard" <Nexus@blossom-am.com>',
-      to: to,
-      subject: subject,
-      html: htmlBody
-    });
+    var resendData = await resendResp.json();
 
-    return res.status(200).json({ ok: true, sent: to, changeType: changeType });
+    if (!resendResp.ok) {
+      console.error('Resend error:', resendData);
+      return res.status(500).json({ error: resendData.message || 'Resend API error' });
+    }
+
+    return res.status(200).json({ ok: true, sent: to, changeType: changeType, id: resendData.id });
   } catch (err) {
     console.error('Notify error:', err);
     return res.status(500).json({ error: err.message });
@@ -99,4 +100,4 @@ function buildEmail(agentName, lot, ville, statusText, color, detail) {
     '<hr style="border:none;border-top:1px solid #e2e8f0;margin:25px 0;">' +
     '<p style="color:#94a3b8;font-size:12px;margin:0;">Cet email a \u00e9t\u00e9 envoy\u00e9 automatiquement par le tableau de bord Nexus.</p>' +
     '</div></div></body></html>';
-  }
+    }
