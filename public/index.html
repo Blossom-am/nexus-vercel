@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "64";
+    var NEXUS_VERSION = "65";
 
       // v61: Email notification for commercialisation status changes (test: Safti only)
       function notifyStatusChange(lot, ville, oldStatus, newStatus, changeType) {
@@ -2961,7 +2961,7 @@
           type: getAgentType(agent) || "",
               categorie: isPrescripteur ? visitMode : "visite",
           note: note,
-          optionExpiry: visitMode === "option" ? Date.now() + 600000 : null
+          optionExpiry: visitMode === "option" ? Date.now() + 172800000 : null
         };
         // Handle option: update commercialisation BEFORE setEntries to avoid race condition
         if (visitMode === "option" && selectedLotId) {
