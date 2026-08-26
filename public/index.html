@@ -117,16 +117,37 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "61";
+    var NEXUS_VERSION = "62";
 
       // v61: Email notification for commercialisation status changes (test: Safti only)
       function notifyStatusChange(lot, ville, oldStatus, newStatus, changeType) {
         try {
-          fetch("/api/notify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": "Bearer nexus2026" },
-            body: JSON.stringify({ to: "yoel.cytron@blossom-am.com", agentName: "Safti", lot: lot, ville: ville, oldStatus: oldStatus, newStatus: newStatus, changeType: changeType })
-          }).then(function(r) { return r.json(); }).then(function(d) { console.log("Notify sent:", d); }).catch(function(e) { console.error("Notify error:", e); });
+          // Find building key for this lot
+          var lotObj = LOTS.find(function(l) { return l.lot === lot; });
+          if (!lotObj) { console.warn("Notify: lot not found", lot); return; }
+          var buildingKey = lotObj.assetIdCdc + "_" + lotObj.ville;
+          // Find mandated agents assigned to this building
+          var agentImmData = getAgentImmData();
+          var agentTypesData = getAgentTypes();
+          var users = getUsers();
+          var notified = [];
+          Object.keys(agentImmData).forEach(function(agentName) {
+            var imms = agentImmData[agentName] || [];
+            if (imms.indexOf(buildingKey) === -1) return;
+            // Only notify Mandat\u00e9 agents
+            if (agentTypesData[agentName] !== "Mandat\u00e9") return;
+            // Find email
+            var user = users.find(function(u) { return u.role === "agent" && u.agentName === agentName; });
+            var email = user && user.email;
+            if (!email) { console.warn("Notify: no email for", agentName); return; }
+            notified.push(agentName);
+            fetch("/api/notify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": "Bearer nexus2026" },
+              body: JSON.stringify({ to: email, agentName: agentName, lot: lot, ville: ville, oldStatus: oldStatus, newStatus: newStatus, changeType: changeType })
+            }).then(function(r) { return r.json(); }).then(function(d) { console.log("Notify sent to " + agentName + ":", d); }).catch(function(e) { console.error("Notify error for " + agentName + ":", e); });
+          });
+          console.log("Notified agents:", notified);
         } catch(e) { console.error("Notify error:", e); }
       }
 
@@ -2261,6 +2282,7 @@
       var [editUsername, setEditUsername] = useState("");
       var [editPassword, setEditPassword] = useState("");
       var [editCredMsg, setEditCredMsg] = useState("");
+      var [editEmail, setEditEmail] = useState("");
 
       // Persist to localStorage
       useEffect(function() { saveAgentImmData(data); }, [data]);
@@ -2268,15 +2290,15 @@
       useEffect(function() {
         var users = getUsers();
         var acc = users.find(function(u) { return u.role === "agent" && u.agentName === selectedAgent; });
-        if (acc) { setEditUsername(acc.username || ""); setEditPassword(acc.password || ""); }
-        else { setEditUsername(""); setEditPassword(""); }
+        if (acc) { setEditUsername(acc.username || ""); setEditPassword(acc.password || ""); setEditEmail(acc.email || ""); }
+        else { setEditUsername(""); setEditPassword(""); setEditEmail(""); }
         setEditCredMsg("");
       }, [selectedAgent]);
       function saveAgentCredentials() {
         if (!selectedAgent || !editUsername) { setEditCredMsg("Identifiant requis"); return; }
         var users = getUsers();
         var acc = users.find(function(u) { return u.role === "agent" && u.agentName === selectedAgent; });
-        if (acc) { acc.username = editUsername; acc.password = editPassword; saveUsers(users); setEditCredMsg("Identifiants sauvegard\u00e9s !"); }
+        if (acc) { acc.username = editUsername; acc.password = editPassword; acc.email = editEmail; saveUsers(users); setEditCredMsg("Identifiants sauvegard\u00e9s !"); }
         else { setEditCredMsg("Aucun compte trouv\u00e9 pour cet agent"); }
       }
 
@@ -2435,6 +2457,9 @@
               h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Mot de passe"),
               h("input", { type: "text", value: editPassword, onChange: function(e) { setEditPassword(e.target.value); setEditCredMsg(""); }, className: "w-full px-3 py-2 border rounded-lg text-sm" })
             ),
+            h("div", {},
+              h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Email"),
+              h("input", { type: "email", value: editEmail, onChange: function(e) { setEditEmail(e.target.value); setEditCredMsg(""); }, className: "w-full border rounded px-2 py-1 text-sm", placeholder: "email@exemple.com" })),
             h("button", { onClick: saveAgentCredentials, className: "px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium" }, "Sauvegarder")
           ) : null,
           editCredMsg ? h("p", { className: "text-sm text-green-600" }, editCredMsg) : null,
