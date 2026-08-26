@@ -54,29 +54,30 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Unknown changeType: ' + changeType });
     }
 
-    // Send email via Resend API
-    var resendResp = await fetch('https://api.resend.com/emails', {
+    // Send email via Brevo API
+    var brevoResp = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
-        'Content-Type': 'application/json'
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM || 'Nexus <onboarding@resend.dev>',
-        to: [to],
+        sender: { name: 'Nexus', email: process.env.BREVO_FROM || 'nexus@blossom-am.com' },
+        to: [{ email: to }],
         subject: subject,
-        html: htmlBody
+        htmlContent: htmlBody
       })
     });
 
-    var resendData = await resendResp.json();
+    var brevoData = await brevoResp.json();
 
-    if (!resendResp.ok) {
-      console.error('Resend error:', resendData);
-      return res.status(500).json({ error: resendData.message || 'Resend API error' });
+    if (!brevoResp.ok) {
+      console.error('Brevo error:', brevoData);
+      return res.status(500).json({ error: brevoData.message || 'Brevo API error', code: brevoData.code });
     }
 
-    return res.status(200).json({ ok: true, sent: to, changeType: changeType, id: resendData.id });
+    return res.status(200).json({ ok: true, sent: to, changeType: changeType, messageId: brevoData.messageId });
   } catch (err) {
     console.error('Notify error:', err);
     return res.status(500).json({ error: err.message });
@@ -100,4 +101,4 @@ function buildEmail(agentName, lot, ville, statusText, color, detail) {
     '<hr style="border:none;border-top:1px solid #e2e8f0;margin:25px 0;">' +
     '<p style="color:#94a3b8;font-size:12px;margin:0;">Cet email a \u00e9t\u00e9 envoy\u00e9 automatiquement par le tableau de bord Nexus.</p>' +
     '</div></div></body></html>';
-    }
+}
