@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "63";
+    var NEXUS_VERSION = "64";
 
       // v61: Email notification for commercialisation status changes (test: Safti only)
       function notifyStatusChange(lot, ville, oldStatus, newStatus, changeType) {
@@ -141,11 +141,14 @@
             var email = user && user.email;
             if (!email) { console.warn("Notify: no email for", agentName); return; }
             notified.push(agentName);
+            var emails = email.split(/[,;]/).map(function(e) { return e.trim(); }).filter(function(e) { return e; });
+            emails.forEach(function(em) {
             fetch("/api/notify", {
               method: "POST",
               headers: { "Content-Type": "application/json", "Authorization": "Bearer nexus2026" },
-              body: JSON.stringify({ to: email, agentName: agentName, lot: lot, ville: ville, oldStatus: oldStatus, newStatus: newStatus, changeType: changeType })
+              body: JSON.stringify({ to: em, agentName: agentName, lot: lot, ville: ville, oldStatus: oldStatus, newStatus: newStatus, changeType: changeType })
             }).then(function(r) { return r.json(); }).then(function(d) { console.log("Notify sent to " + agentName + ":", d); }).catch(function(e) { console.error("Notify error for " + agentName + ":", e); });
+            });
           });
           console.log("Notified agents:", notified);
         } catch(e) { console.error("Notify error:", e); }
@@ -2459,7 +2462,7 @@
             ),
             h("div", {},
               h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Email"),
-              h("input", { type: "email", value: editEmail, onChange: function(e) { setEditEmail(e.target.value); setEditCredMsg(""); }, className: "w-full border rounded px-2 py-1 text-sm", placeholder: "email@exemple.com" })),
+              h("input", { type: "text", value: editEmail, onChange: function(e) { setEditEmail(e.target.value); setEditCredMsg(""); }, className: "w-full border rounded px-2 py-1 text-sm", placeholder: "email1, email2, ..." })),
             h("button", { onClick: saveAgentCredentials, className: "px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium" }, "Sauvegarder")
           ) : null,
           editCredMsg ? h("p", { className: "text-sm text-green-600" }, editCredMsg) : null,
@@ -2622,6 +2625,7 @@
             var _na = useState(""), newAccAgent = _na[0], setNewAccAgent = _na[1];
             var _nu = useState(""), newAccUser = _nu[0], setNewAccUser = _nu[1];
             var _np = useState(""), newAccPass = _np[0], setNewAccPass = _np[1];
+            var _ne = useState(""), newAccEmail = _ne[0], setNewAccEmail = _ne[1];
             var _msg = useState(""), accMsg = _msg[0], setAccMsg = _msg[1];
             var _err = useState(""), accErr = _err[0], setAccErr = _err[1];
             var _refresh = useState(0), refreshKey = _refresh[0], setRefreshKey = _refresh[1];
@@ -2645,13 +2649,14 @@
                 fullName: newAccAgent,
                 agentName: newAccAgent,
                 secretQ: 0,
-                secretA: "agent"
+                secretA: "agent",
+                email: newAccEmail
               };
               users.push(newAcc);
               saveUsers(users);
               // Add to BUILTIN_USERS so it gets embedded in the file
               var _setAccMsg = setAccMsg, _setRefresh = setRefreshKey;
-              setNewAccAgent(""); setNewAccUser(""); setNewAccPass("");
+              setNewAccAgent(""); setNewAccUser(""); setNewAccPass(""); setNewAccEmail("");
               setRefreshKey(function(k) { return k + 1; });
               saveFile().then(function(ok) {
                 _setAccMsg(ok ? "Compte créé pour " + newAccAgent + " — sauvegardé pour tous les terminaux." : "Compte créé localement. Sauvegarde annulée.");
@@ -2671,7 +2676,7 @@
             }
 
             return h("div", { className: "space-y-4" },
-              h("div", { className: "grid grid-cols-4 gap-3 items-end nexus-grid-responsive nexus-form-stack" },
+              h("div", { className: "grid grid-cols-5 gap-3 items-end nexus-grid-responsive nexus-form-stack" },
                 h("div", {},
                   h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Agent mandaté"),
                   h("select", {
@@ -2699,6 +2704,12 @@
                     placeholder: "ex: agent2026", className: "w-full px-3 py-2 border rounded-lg text-sm"
                   })
                 ),
+                h("div", {},
+                  h("label", { className: "block text-xs font-medium text-gray-600 mb-1" }, "Email(s)"),
+                  h("input", { type: "text", value: newAccEmail, onChange: function(e) { setNewAccEmail(e.target.value); setAccMsg(""); },
+                    placeholder: "email1, email2, ...", className: "w-full px-3 py-2 border rounded-lg text-sm"
+                  })
+                ),
                 h("button", {
                   onClick: createAgentAccount,
                   className: "px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium"
@@ -2714,6 +2725,7 @@
                       h("th", { className: "px-4 py-2 text-left font-semibold text-gray-700" }, "Agent"),
                       h("th", { className: "px-4 py-2 text-left font-semibold text-gray-700" }, "Identifiant"),
                       h("th", { className: "px-4 py-2 text-left font-semibold text-gray-700" }, "Mot de passe"),
+                      h("th", { className: "px-4 py-2 text-left font-semibold text-gray-700" }, "Email"),
 
                       h("th", { className: "px-4 py-2 text-left font-semibold text-gray-700" }, "Immeubles mandatés"),
                       h("th", { className: "px-4 py-2 text-center font-semibold text-gray-700 w-20" }, "")
@@ -2726,6 +2738,7 @@
                         h("td", { className: "px-4 py-2 font-medium" }, acc.agentName),
                         h("td", { className: "px-4 py-2 text-gray-600" }, acc.username),
                         h("td", { className: "px-4 py-2 text-gray-500 font-mono text-xs" }, acc.password || "—"),
+                        h("td", { className: "px-4 py-2 text-xs text-gray-500" }, acc.email || "—"),
                         h("td", { className: "px-4 py-2" },
                           immList.length > 0
                             ? h("div", { className: "flex flex-wrap gap-1" },
