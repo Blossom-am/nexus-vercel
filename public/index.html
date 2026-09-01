@@ -117,7 +117,7 @@
       const fmtM2 = (n) => n != null && n > 0 ? fmt(n) + ' €/m²' : '—';
 
       window.errorLog = window.errorLog || [];
-    var NEXUS_VERSION = "67";
+    var NEXUS_VERSION = "68";
 
       // v61: Email notification for commercialisation status changes (test: Safti only)
       function notifyStatusChange(lot, ville, oldStatus, newStatus, changeType) {
@@ -2856,7 +2856,7 @@
       var filteredLots = useMemo(function() {
         if (!selectedImmeuble) return [];
         var base = LOTS.filter(function(l) {
-          return (l.nature === "APT" || l.nature === "PAV") && l.ville === selectedImmeuble;
+          return (l.nature === "APT" || l.nature === "PAV") && (l.assetIdCdc + "_" + l.ville) === selectedImmeuble;
         });
         if (isAgentUser) {
           // For agents: only show lots with commercialisation = "Disponible"
@@ -2952,7 +2952,7 @@
         var newEntry = {
           id: Date.now(),
           lot: selectedLotId || "",
-          ville: lot ? lot.ville : selectedImmeuble,
+          ville: lot ? lot.ville : (selectedImmeuble.indexOf("_") > -1 ? selectedImmeuble.substring(selectedImmeuble.indexOf("_") + 1) : selectedImmeuble),
           typo: lot ? lot.typo : "",
           immeuble: selectedImmeuble,
           agent: agent,
@@ -3087,7 +3087,7 @@
                     ? b.lots.filter(function(l) { var c = commDataRef[l.lot] || ""; return (l.nature === "APT" || l.nature === "PAV") && c === "Disponible"; }).length
                     : b.lots.length;
                   var label = m && m.address ? b.ville + " — " + m.address.split(",")[0] + " (" + nbLots + " lots)" : b.ville + " (" + nbLots + " lots)";
-                  return h("option", { key: b.assetIdCdc + "_" + b.ville, value: b.ville }, label);
+                  return h("option", { key: b.assetIdCdc + "_" + b.ville, value: b.assetIdCdc + "_" + b.ville }, label);
                 })
               )
             ),
